@@ -1,0 +1,106 @@
+/* ─────────────────────────────────────────
+   layout.css — App shell grid
+───────────────────────────────────────── */
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 1fr var(--player-h);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main {
+  grid-column: 2;
+  grid-row: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* Page base */
+.page {
+  padding: 28px 32px 48px;
+  animation: pageIn 0.18s ease;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Top bar inside each page */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 4px 0 12px;
+}
+
+.topbar h1 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.topbar h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* Section headers */
+.section-hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-hd h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.section-hd a {
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.section-hd a:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ───────────────────── */
+@media (max-width: 768px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    grid-column: 1;
+  }
+
+  .page {
+    padding: 20px 16px 32px;
+  }
+}

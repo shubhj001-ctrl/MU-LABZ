@@ -1,0 +1,52 @@
+/* ─────────────────────────────────────────
+   variables.css — Design tokens
+   All colors, spacing, and typography
+   values live here. Edit to retheme.
+───────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --bg:       #fafaf8;
+  --bg2:      #f2f0eb;
+  --bg3:      #e8e5dd;
+  --surface:  #ffffff;
+
+  /* Borders */
+  --border:   #e5e2da;
+  --border2:  #d0ccc2;
+
+  /* Text */
+  --text:     #1a1814;
+  --text2:    #6b6860;
+  --text3:    #a09d96;
+
+  /* Accent — green */
+  --accent:      #2d6a4f;
+  --accent-bg:   #e8f5ee;
+  --accent-dark: #1e4d39;
+
+  /* Accent 2 — amber */
+  --accent2:     #c17435;
+  --accent2-bg:  #fdf0e4;
+
+  /* Semantic */
+  --red:     #c0392b;
+  --red-bg:  #fde8e8;
+
+  /* Shadows */
+  --shadow:  0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow2: 0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+
+  /* Radii */
+  --radius:    14px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+
+  /* Layout */
+  --sidebar-w:  220px;
+  --player-h:   80px;
+
+  /* Typography */
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body:    'Geist', system-ui, sans-serif;
+}
