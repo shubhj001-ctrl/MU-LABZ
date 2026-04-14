@@ -25,6 +25,9 @@ const State = {
 
   // Navigation
   prevPage: 'home',
+
+  // Refresh tracking (for auto-refresh features)
+  lastHomeRefresh: 0,  // Timestamp of last home page refresh
 };
 
 // ── State helpers ───────────────────────────────────────────────────
@@ -45,11 +48,71 @@ function toggleLikeById(id) {
   }
 }
 
-/** Add a track to history (deduped, max 50 entries) */
+/** Add a track to history (deduped, max 50 entries) AND persist to localStorage */
 function addToHistory(track) {
+  if (!track || !track.id) return;
+  
   State.history = State.history.filter(t => t.id !== track.id);
   State.history.push(track);
   if (State.history.length > 50) State.history.shift();
+  
+  // Persist to localStorage with timestamp
+  const historyData = {
+    timestamp: Date.now(),
+    tracks: State.history.map(t => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      album: t.album,
+      image: t.image,
+      duration: t.duration,
+      audio: t.audio,
+      genre: t.genre,
+      source: t.source,
+    }))
+  };
+  localStorage.setItem('wavely_history', JSON.stringify(historyData));
+}
+
+/** Load history from localStorage and check if it's expired (1 day = 86400000ms) */
+function loadHistoryFromStorage() {
+  const stored = localStorage.getItem('wavely_history');
+  if (!stored) return;
+  
+  try {
+    const data = JSON.parse(stored);
+    const age = Date.now() - data.timestamp;
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    
+    if (age < ONE_DAY) {
+      State.history = data.tracks || [];
+    } else {
+      // History expired, clear it
+      localStorage.removeItem('wavely_history');
+      State.history = [];
+    }
+  } catch (e) {
+    console.warn('[Wavely] Failed to load history from storage:', e);
+  }
+}
+
+/** Clear old history if it's more than 1 day old */
+function clearExpiredHistory() {
+  const stored = localStorage.getItem('wavely_history');
+  if (!stored) return;
+  
+  try {
+    const data = JSON.parse(stored);
+    const age = Date.now() - data.timestamp;
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    
+    if (age >= ONE_DAY) {
+      localStorage.removeItem('wavely_history');
+      State.history = [];
+    }
+  } catch (e) {
+    console.warn('[Wavely] Failed to check history expiry:', e);
+  }
 }
 
 /** Update the liked count badge in the sidebar */

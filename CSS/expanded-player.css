@@ -398,6 +398,134 @@
   flex-shrink: 0;
 }
 
+/* ── Mobile responsiveness ─────────────── */
+@media (max-width: 768px) {
+  .ep-content {
+    padding: 0 16px;
+    max-width: 100%;
+  }
+
+  .ep-header {
+    padding: 16px 0 8px;
+  }
+
+  .ep-header button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ep-header button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ep-art {
+    width: 80%;
+    height: auto;
+    margin: 20px auto 24px;
+  }
+
+  .ep-info-section {
+    margin-bottom: 20px;
+  }
+
+  .ep-title {
+    font-size: 1.3rem;
+  }
+
+  .ep-artist {
+    font-size: 0.9rem;
+  }
+
+  .ep-album {
+    font-size: 0.85rem;
+  }
+
+  .ep-range {
+    margin-bottom: 16px;
+  }
+
+  .ep-prog-bar {
+    height: 3px;
+    margin-bottom: 6px;
+  }
+
+  .ep-times {
+    font-size: 9px;
+  }
+
+  .ep-controls {
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+
+  .ep-ctrl {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ep-play {
+    width: 52px;
+    height: 52px;
+  }
+
+  .ep-volume {
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+
+  .ep-vol-bar {
+    flex: 1;
+    height: 3px;
+  }
+
+  .ep-extras {
+    padding-bottom: 24px;
+    gap: 16px;
+  }
+
+  .ep-extras button {
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ep-content {
+    padding: 0 12px;
+  }
+
+  .ep-art {
+    width: 70%;
+    max-width: 240px;
+  }
+
+  .ep-title {
+    font-size: 1.1rem;
+  }
+
+  .ep-artist {
+    font-size: 0.85rem;
+  }
+
+  .ep-play {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ep-controls {
+    gap: 12px;
+  }
+
+  .ep-ctrl {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ep-header {
+    padding: 12px 0 6px;
+  }
+}
+
 .ep-extra-btn {
   display: flex;
   flex-direction: column;

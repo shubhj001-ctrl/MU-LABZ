@@ -298,6 +298,115 @@
   flex-shrink: 0;
 }
 
+/* ── Mobile responsiveness ─────────────── */
+@media (max-width: 768px) {
+  .lib-tabs {
+    gap: 4px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lib-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .create-playlist-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .artist-hero {
+    padding: 24px;
+    min-height: 160px;
+    margin-bottom: 20px;
+  }
+
+  .artist-hero-decoration {
+    font-size: 6rem;
+  }
+
+  .artist-name {
+    font-size: 1.8rem;
+  }
+
+  .artist-meta {
+    font-size: 12px;
+  }
+
+  .search-topbar {
+    padding: 16px 0 0;
+    margin-bottom: 16px;
+  }
+
+  .search-title {
+    font-size: 1.4rem;
+    margin-bottom: 12px;
+  }
+
+  .search-input-big {
+    padding: 11px 36px 11px 38px;
+    font-size: 14px;
+  }
+
+  .search-results-list {
+    gap: 8px;
+  }
+
+  .search-result {
+    padding: 10px;
+  }
+
+  .search-result-title {
+    font-size: 12px;
+  }
+
+  .search-result-meta {
+    font-size: 10px;
+  }
+
+  .search-result-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .search-result-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .suggests {
+    max-height: 300px;
+  }
+
+  .suggest-item {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .suggest-img,
+  .suggest-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .suggest-text strong {
+    font-size: 12px;
+  }
+
+  .suggest-text span {
+    font-size: 10px;
+  }
+
+  .suggest-badge {
+    font-size: 9px;
+  }
+}
+
 /* ── Album hero banner ──────────────────────────────────────────── */
 
 .album-hero {

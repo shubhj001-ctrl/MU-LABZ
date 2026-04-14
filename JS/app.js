@@ -8,9 +8,24 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  // ── Initialize app state ───────────────────────────────────────
+  // Load history from localStorage on startup
+  loadHistoryFromStorage();
+  clearExpiredHistory();
+
   // ── Sidebar nav ────────────────────────────────────────────────
   document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     btn.addEventListener('click', () => Router.navigate(btn.dataset.page));
+  });
+
+  // Mobile nav buttons
+  document.querySelectorAll('.mobile-nav-item[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Router.navigate(btn.dataset.page);
+      // Update active state
+      document.querySelectorAll('.mobile-nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
 
   document.querySelectorAll('.playlist-item[data-playlist]').forEach(item => {
@@ -51,6 +66,18 @@ document.addEventListener('DOMContentLoaded', () => {
       updateLikedCount();
     });
 
+  // ── Auto-refresh home page every 5 hours ────────────────────────
+  // This ensures trending and new releases stay fresh
+  window.shouldRefreshHome = () => {
+    const FIVE_HOURS = 5 * 60 * 60 * 1000;
+    const now = Date.now();
+    if (now - State.lastHomeRefresh >= FIVE_HOURS) {
+      State.lastHomeRefresh = now;
+      return true;
+    }
+    return false;
+  };
+
   // ── Keyboard shortcuts ─────────────────────────────────────────
   document.addEventListener('keydown', e => {
     // Don't fire when typing in an input
@@ -71,5 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Initial page ───────────────────────────────────────────────
+  State.lastHomeRefresh = Date.now();
   Router.navigate('home');
 });

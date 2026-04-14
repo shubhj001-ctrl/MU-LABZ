@@ -8,10 +8,11 @@
 
 const Router = (() => {
   const PAGES = {
-    home:    HomePage,
-    search:  SearchPage,
-    artist:  ArtistPage,
-    library: LibraryPage,
+    home:            HomePage,
+    search:          SearchPage,
+    artist:          ArtistPage,
+    library:         LibraryPage,
+    'recently-played': RecentlyPlayedPage,
   };
 
   // Simple history stack (page name + params)
@@ -19,6 +20,9 @@ const Router = (() => {
 
   function _setNavActive(page) {
     document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
+    document.querySelectorAll('.mobile-nav-item[data-page]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
   }

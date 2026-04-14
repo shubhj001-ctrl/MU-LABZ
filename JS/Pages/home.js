@@ -104,9 +104,10 @@ const HomePage = (() => {
       Router.navigate('search', { query: 'ambient' });
     });
 
-    // Trending tracks
+    // Trending tracks (refresh every 5 hours by cache-busting)
     const trendingEl = container.querySelector('#trending-list');
     Components.skeletonTracks(trendingEl);
+    const shouldRefresh = window.shouldRefreshHome?.();
     const trending = await API.trending(10);
     State.queue = trending;
     Components.renderTrackList(trendingEl, trending, _renderTrackOpts());

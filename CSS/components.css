@@ -461,3 +461,183 @@
   background: var(--bg2);
   color: var(--text);
 }
+
+/* ── Mobile responsiveness ─────────────── */
+@media (max-width: 768px) {
+  /* Cards grid */
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    padding: 10px;
+  }
+
+  .card-art {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+
+  .card-title {
+    font-size: 12px;
+  }
+
+  .card-sub {
+    font-size: 10px;
+  }
+
+  /* Track list - hide album column on mobile */
+  .track-list {
+    margin-bottom: 20px;
+  }
+
+  .track-list-hd {
+    display: grid;
+    grid-template-columns: 32px 1fr 40px;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 9px;
+  }
+
+  .track-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 40px;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .track-thumb {
+    width: 32px;
+    height: 32px;
+  }
+
+  .track-num {
+    font-size: 11px;
+  }
+
+  .track-name {
+    font-size: 12px;
+  }
+
+  .track-artist-link {
+    font-size: 10px;
+  }
+
+  .track-album-col {
+    display: none;
+  }
+
+  .track-dur {
+    font-size: 11px;
+  }
+
+  .track-actions {
+    gap: 4px;
+  }
+
+  .icon-btn {
+    padding: 3px;
+  }
+
+  /* Genre pills */
+  .genre-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .genre-pill {
+    padding: 14px 12px;
+    min-height: 64px;
+  }
+
+  .genre-pill-name {
+    font-size: 12px;
+  }
+
+  .genre-pill-emoji {
+    font-size: 1.5rem;
+  }
+
+  /* Hero banner */
+  .hero {
+    padding: 20px;
+    margin-bottom: 24px;
+    min-height: 140px;
+    gap: 16px;
+  }
+
+  .hero-emoji {
+    font-size: 3rem;
+  }
+
+  .hero-tag {
+    font-size: 11px;
+  }
+
+  .hero-title {
+    font-size: 1.4rem;
+  }
+
+  .hero-sub {
+    font-size: 12px;
+  }
+
+  /* Toast - adjust bottom position for mobile */
+  .toast {
+    bottom: 76px;
+    font-size: 11px;
+    padding: 8px 16px;
+    max-width: 90vw;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+  }
+
+  /* Search bar */
+  .search-bar {
+    font-size: 14px;
+  }
+
+  .search-bar input {
+    font-size: 14px;
+  }
+}
+
+/* ── Extra small devices (< 480px) ─────────────── */
+@media (max-width: 480px) {
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .genre-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero {
+    padding: 16px;
+    min-height: 120px;
+  }
+
+  .hero-title {
+    font-size: 1.2rem;
+  }
+
+  .hero-emoji {
+    font-size: 2.5rem;
+  }
+
+  .section-hd h2 {
+    font-size: 1rem;
+  }
+
+  .page {
+    padding: 12px 10px 80px;
+  }
+
+  .topbar h1 {
+    font-size: 1.2rem;
+  }
+}
