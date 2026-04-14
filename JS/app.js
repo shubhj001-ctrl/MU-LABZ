@@ -18,14 +18,32 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => Router.navigate(btn.dataset.page));
   });
 
-  // Mobile nav buttons
+  // ── Hamburger menu ─────────────────────────────────────────────
+  const hamburger = document.getElementById('hamburger');
+  const mobileNav = document.getElementById('mobile-nav');
+  
+  hamburger?.addEventListener('click', () => {
+    mobileNav.classList.toggle('open');
+    document.body.classList.toggle('menu-open');
+  });
+
+  // Close menu when clicking a nav item
   document.querySelectorAll('.mobile-nav-item[data-page]').forEach(btn => {
     btn.addEventListener('click', () => {
       Router.navigate(btn.dataset.page);
-      // Update active state
-      document.querySelectorAll('.mobile-nav-item').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      mobileNav.classList.remove('open');
+      document.body.classList.remove('menu-open');
     });
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (mobileNav?.classList.contains('open') && 
+        !mobileNav.contains(e.target) && 
+        !hamburger.contains(e.target)) {
+      mobileNav.classList.remove('open');
+      document.body.classList.remove('menu-open');
+    }
   });
 
   document.querySelectorAll('.playlist-item[data-playlist]').forEach(item => {

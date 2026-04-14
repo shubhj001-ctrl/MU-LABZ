@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MU LABZ — Premium Music Streaming</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="CSS/reset.css" />
   <link rel="stylesheet" href="CSS/variables.css" />
   <link rel="stylesheet" href="CSS/layout.css" />
@@ -22,6 +22,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
         <img src="assets/mu-labz-logo.png" alt="MU LABZ" class="logo-image" />
+        <div class="logo-text">MU LABZ</div>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-section">
@@ -72,7 +73,14 @@
     <!-- Main content — pages rendered here -->
     <main class="main" id="main-content"></main>
 
-    <!-- Mobile navigation (bottom nav for mobile screens) -->
+    <!-- Mobile hamburger menu -->
+    <button class="hamburger" id="hamburger" title="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <!-- Mobile navigation menu (overlay) -->
     <nav class="mobile-nav" id="mobile-nav">
       <button class="mobile-nav-item active" data-page="home" title="Home">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">

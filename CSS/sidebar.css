@@ -17,29 +17,26 @@
   padding: 20px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 8px;
 }
 
 .logo-image {
-  width: 120px;
+  width: 100px;
   height: auto;
   display: block;
 }
 
-.logo-mark {
-  font-family: var(--font-body);
+.logo-text {
+  font-family: 'Crimson Text', serif;
   font-weight: 700;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
   color: var(--text);
-  letter-spacing: -0.02em;
+  text-align: center;
   margin: 0;
-  display: none;
-}
-
-.logo-mark span {
-  color: var(--text);
-  display: none;
 }
 
 /* Nav */

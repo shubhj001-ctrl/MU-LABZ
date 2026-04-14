@@ -2,8 +2,8 @@
  * router.js — Client-side router
  *
  * Maps page names to their render functions.
- * Keeps a history stack so Router.back() works.
- * Updates the sidebar nav active state.
+ * Uses browser History API for proper back button support.
+ * Keeps navigation history so back gestures follow the user's path.
  */
 
 const Router = (() => {
@@ -14,9 +14,6 @@ const Router = (() => {
     library:         LibraryPage,
     'recently-played': RecentlyPlayedPage,
   };
-
-  // Simple history stack (page name + params)
-  const _stack = [];
 
   function _setNavActive(page) {
     document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
@@ -31,22 +28,46 @@ const Router = (() => {
     const renderer = PAGES[page];
     if (!renderer) { console.warn('Unknown page:', page); return; }
 
-    // Push to history stack
-    _stack.push({ page, params });
-
     _setNavActive(page);
 
     const container = document.getElementById('main-content');
     await renderer.render(container, params);
+
+    // Push to browser history so back button works
+    const state = { page, params };
+    window.history.pushState(state, `${page}`, `#${page}${Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : ''}`);
   }
 
   function back() {
-    if (_stack.length <= 1) { navigate('home'); return; }
-    _stack.pop(); // remove current
-    const prev = _stack[_stack.length - 1];
-    _stack.pop(); // navigate will push it again
-    navigate(prev.page, prev.params);
+    window.history.back();
   }
+
+  // Handle browser back button
+  window.addEventListener('popstate', async (e) => {
+    if (e.state && e.state.page) {
+      const { page, params } = e.state;
+      const renderer = PAGES[page];
+      if (renderer) {
+        _setNavActive(page);
+        const container = document.getElementById('main-content');
+        await renderer.render(container, params || {});
+      }
+    } else {
+      // If no state, default to home
+      const renderer = PAGES['home'];
+      if (renderer) {
+        _setNavActive('home');
+        const container = document.getElementById('main-content');
+        await renderer.render(container, {});
+      }
+    }
+  });
+
+  // Initialize on first load
+  window.addEventListener('DOMContentLoaded', () => {
+    const initialState = { page: 'home', params: {} };
+    window.history.replaceState(initialState, 'home', '#home');
+  });
 
   return { navigate, back };
 })();
