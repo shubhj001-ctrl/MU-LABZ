@@ -16,9 +16,10 @@ body {
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  grid-template-rows: 1fr var(--player-h);
+  grid-template-rows: 1fr;
   height: 100vh;
   overflow: hidden;
+  padding-bottom: var(--player-h);
 }
 
 .main {
@@ -28,6 +29,7 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-bottom: var(--player-h);
 }
 
 /* Scrollbar styling */
@@ -228,11 +230,9 @@ body.menu-open {
 /* ── Responsive ───────────────────── */
 @media (max-width: 768px) {
   .app {
-    display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr var(--player-h);
-    height: 100vh;
-    overflow: hidden;
+    grid-template-rows: 1fr;
+    padding-bottom: var(--player-h);
   }
 
   .hamburger {
@@ -254,6 +254,7 @@ body.menu-open {
     overflow-y: auto;
     overflow-x: hidden;
     padding-top: 50px;
+    padding-bottom: var(--player-h);
   }
 
   .mobile-nav {
@@ -261,7 +262,7 @@ body.menu-open {
   }
 
   .page {
-    padding: 16px 12px 32px;
+    padding: 16px 12px 20px;
   }
 
   .topbar {
