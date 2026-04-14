@@ -60,6 +60,11 @@ const HomePage = (() => {
           <h1>Now Playing</h1>
         </div>
 
+        <!-- Quick Search -->
+        <div class="search-bar-home">
+          <input type="text" id="home-search-input" class="search-bar-input" placeholder="Search songs, artists..." />
+        </div>
+
         <!-- Trending -->
         <div class="section-hd"><h2>Trending now</h2></div>
         <div class="track-list" id="trending-list"></div>
@@ -74,6 +79,14 @@ const HomePage = (() => {
         </div>
         <div class="genre-grid" id="home-genres"></div>
       </div>`;
+
+    // Quick search functionality
+    const searchInput = container.querySelector('#home-search-input');
+    searchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && searchInput.value.trim()) {
+        Router.navigate('search', { query: searchInput.value.trim() });
+      }
+    });
 
     // Genre grid (show first 8)
     Components.renderGenres(

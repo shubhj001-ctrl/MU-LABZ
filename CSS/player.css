@@ -13,7 +13,30 @@
   padding: 0 24px;
   gap: 20px;
   z-index: 100;
+  min-height: var(--player-h);
+  overflow: hidden;
+  visibility: visible;
+  position: relative;
 }
+
+/* Ensure player shows on mobile */
+@media (max-width: 768px) {
+  .player {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    min-height: var(--player-h);
+    padding: 0 12px;
+    gap: 8px;
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+    height: auto;
+    flex-wrap: wrap;
+    z-index: 100;
+    position: relative;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
 
 /* Track info (left) */
 .player-track {
