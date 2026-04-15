@@ -51,7 +51,8 @@ const PartyRoom = (() => {
     }
 
     // Connect to backend
-    const backendUrl = window.location.hostname === 'localhost'
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const backendUrl = isDev
       ? 'http://localhost:3001'
       : 'https://mu-labz-backend.onrender.com';
 
@@ -61,8 +62,13 @@ const PartyRoom = (() => {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionInitialDelay: 1000,
+      transports: ['polling', 'websocket'], // Try polling first (more reliable on some networks)
+      secure: !isDev, // HTTPS for production
+      rejectUnauthorized: false, // Allow self-signed certs in development
+      timeout: 20000,
+      forceNew: true,
     });
 
     _attachSocketListeners();
@@ -73,22 +79,31 @@ const PartyRoom = (() => {
   function _attachSocketListeners() {
     if (!socket) return;
 
-    // Connection events
     socket.on('connect', () => {
-      console.log('[PartyRoom] Connected to server:', socket.id);
+      console.log('[PartyRoom] ✅ Connected to server:', socket.id);
       isConnected = true;
       document.dispatchEvent(new CustomEvent('party:connected'));
     });
 
     socket.on('disconnect', () => {
-      console.log('[PartyRoom] Disconnected from server');
+      console.log('[PartyRoom] ❌ Disconnected from server');
       isConnected = false;
       document.dispatchEvent(new CustomEvent('party:disconnected'));
     });
 
     // Connection success
     socket.on('connect:success', (data) => {
-      console.log('[PartyRoom] Backend connection successful:', data.message);
+      console.log('[PartyRoom] ✅ Backend connection successful:', data.message);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[PartyRoom] ⚠️ Connection error:', error?.message || error);
+      document.dispatchEvent(new CustomEvent('party:connectionError', { detail: error }));
+    });
+
+    socket.on('error', (err) => {
+      console.error('[PartyRoom] ⚠️ Socket error:', err?.type, err?.message || err);
+      document.dispatchEvent(new CustomEvent('party:error', { detail: err }));
     });
 
     // ── Room Events ══════════════════════════════════════════════

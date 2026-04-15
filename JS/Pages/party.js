@@ -128,19 +128,44 @@ const PartyPage = (() => {
       }
 
       PartyRoom.setPartyName(partyName);
+      
+      // Show loading toast
+      showToast('Connecting to server...');
+      
+      // Initialize socket connection
       PartyRoom.init();
-      PartyRoom.createRoom(roomName, maxUsers, roomType, password);
+
+      // Wait for connection to be established
+      let connectionAttempts = 0;
+      const checkConnection = setInterval(() => {
+        connectionAttempts++;
+        
+        if (PartyRoom.isConnected()) {
+          clearInterval(checkConnection);
+          showToast('Creating room...');
+          PartyRoom.createRoom(roomName, maxUsers, roomType, password);
+        } else if (connectionAttempts > 50) { // 5 seconds timeout
+          clearInterval(checkConnection);
+          showToast('❌ Failed to connect to server. Check your connection.');
+          console.error('[PartyPage] Connection timeout after 5 seconds');
+        }
+      }, 100);
 
       const handler = () => {
+        clearInterval(checkConnection);
         document.removeEventListener('party:roomCreated', handler);
+        document.removeEventListener('party:error', errorHandler);
+        showToast('✅ Room created! Entering...');
         Router.navigate('party', { roomId: PartyRoom.getState().roomId });
         modal.remove();
       };
       document.addEventListener('party:roomCreated', handler);
 
       const errorHandler = (e) => {
-        showToast('Error: ' + (e.detail?.message || 'Failed to create room'));
-        document.removeEventListener('party:error', errorHandler);
+        clearInterval(checkConnection);
+        const msg = e.detail?.message || 'Failed to create room';
+        console.error('[PartyPage] Room creation error:', e.detail);
+        showToast('❌ Error: ' + msg);
       };
       document.addEventListener('party:error', errorHandler);
     });
@@ -193,33 +218,52 @@ const PartyPage = (() => {
 
       const password = modal.querySelector('#password-input').value || null;
       PartyRoom.setPartyName(partyName);
+      
+      showToast('Connecting to server...');
       PartyRoom.init();
       
-      // Try to join - backend will determine if room is public or private
-      PartyRoom.joinRoom(roomId, password);
+      // Wait for connection to be established
+      let connectionAttempts = 0;
+      const checkConnection = setInterval(() => {
+        connectionAttempts++;
+        
+        if (PartyRoom.isConnected()) {
+          clearInterval(checkConnection);
+          showToast('Joining room...');
+          PartyRoom.joinRoom(roomId, password);
+        } else if (connectionAttempts > 50) { // 5 seconds timeout
+          clearInterval(checkConnection);
+          showToast('❌ Failed to connect to server. Check your connection.');
+          console.error('[PartyPage] Connection timeout after 5 seconds');
+        }
+      }, 100);
 
       const handler = () => {
+        clearInterval(checkConnection);
         document.removeEventListener('party:roomJoined', handler);
+        document.removeEventListener('party:connectionError', errorHandler);
         document.removeEventListener('party:error', errorHandler);
+        showToast('✅ Joined room! Entering...');
         Router.navigate('party', { roomId: roomId });
         modal.remove();
       };
 
       const errorHandler = (e) => {
+        clearInterval(checkConnection);
         if (e.detail && (e.detail.type === 'ROOM_NOT_FOUND' || e.detail.type === 'INVALID_PASSWORD' || e.detail.type === 'ROOM_FULL')) {
-          const msg = e.detail.type === 'INVALID_PASSWORD' ? 'Wrong passcode' : e.detail.message;
-          showToast('Error: ' + msg);
+          const msg = e.detail.type === 'INVALID_PASSWORD' ? '❌ Wrong passcode' : '❌ ' + (e.detail.message || 'Failed to join room');
+          showToast(msg);
+          console.error('[PartyPage] Join error:', e.detail);
           
           // Show password group if invalid password
           if (e.detail.type === 'INVALID_PASSWORD') {
             modal.querySelector('#password-group').style.display = 'block';
           }
-          
-          document.removeEventListener('party:error', errorHandler);
         }
       };
 
       document.addEventListener('party:roomJoined', handler);
+      document.addEventListener('party:connectionError', errorHandler);
       document.addEventListener('party:error', errorHandler);
     });
 
