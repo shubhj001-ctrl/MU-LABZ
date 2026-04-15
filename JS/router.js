@@ -13,6 +13,7 @@ const Router = (() => {
     artist:          ArtistPage,
     library:         LibraryPage,
     'recently-played': RecentlyPlayedPage,
+    party:           PartyPage,
   };
 
   function _setNavActive(page) {

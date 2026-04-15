@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="CSS/expanded-player.css" />
   <link rel="stylesheet" href="CSS/components.css" />
   <link rel="stylesheet" href="CSS/pages.css" />
+  <link rel="stylesheet" href="CSS/party-room.css" />
 </head>
 <body>
   <div class="app">
@@ -39,6 +40,13 @@
               <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
             </svg>
             My Library
+          </button>
+          <button class="nav-item" data-page="party">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <circle cx="9" cy="8" r="3"/><path d="M2 19c0-3 1.5-5 7-5s7 2 7 5"/>
+              <circle cx="16" cy="7" r="2.5"/><path d="M11 15c.5-1.5 1-2 3-2s2.5.5 3 2"/>
+            </svg>
+            Party Room
           </button>
         </div>
       </nav>
@@ -94,6 +102,13 @@
           <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
         </svg>
         <span>Library</span>
+      </button>
+      <button class="mobile-nav-item" data-page="party" title="Party Room">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <circle cx="9" cy="8" r="3"/><path d="M2 19c0-3 1.5-5 7-5s7 2 7 5"/>
+          <circle cx="16" cy="7" r="2.5"/><path d="M11 15c.5-1.5 1-2 3-2s2.5.5 3 2"/>
+        </svg>
+        <span>Party</span>
       </button>
     </nav>
 
@@ -171,17 +186,20 @@
   </div>
 
   <!-- Scripts — order matters -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script src="JS/state.js"></script>
   <script src="JS/api.js"></script>
   <script src="JS/components.js"></script>
   <script src="JS/queue.js"></script> 
   <script src="JS/player.js"></script>
   <script src="JS/expanded-player.js"></script>
+  <script src="JS/party.js"></script>
   <script src="JS/Pages/home.js"></script>
   <script src="JS/Pages/search.js"></script>
   <script src="JS/Pages/artist.js"></script>
   <script src="JS/Pages/library.js"></script>
   <script src="JS/Pages/recently-played.js"></script>
+  <script src="JS/Pages/party.js"></script>
   <script src="JS/router.js"></script>
   <script src="JS/app.js"></script>
 </body>
