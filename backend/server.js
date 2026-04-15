@@ -18,8 +18,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
   cors: {
-    origin: ['http://localhost:3000', 'https://*.vercel.app'],
+    // Allow requests from localhost (development) and Vercel (production)
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:8000',
+      'https://*.vercel.app',
+      'https://mulabz.vercel.app' // Your deployed frontend
+    ],
     methods: ['GET', 'POST'],
+    credentials: true
   },
 });
 

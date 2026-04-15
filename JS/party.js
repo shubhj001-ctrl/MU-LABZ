@@ -50,8 +50,12 @@ const PartyRoom = (() => {
       return;
     }
 
-    // Connect to backend (MUST be running locally on port 3001)
-    const backendUrl = 'http://localhost:3001';
+    // Connect to backend
+    // LOCAL: http://localhost:3001 (for development)
+    // DEPLOYED: https://your-railway-url.up.railway.app (for production)
+    const backendUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : 'https://mu-labz-production.up.railway.app'; // REPLACE with your Railway URL
     
     console.log('[PartyRoom] Connecting to backend at', backendUrl);
 
