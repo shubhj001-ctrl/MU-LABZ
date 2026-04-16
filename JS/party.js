@@ -52,11 +52,16 @@ const PartyRoom = (() => {
 
     // Connect to backend
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const backendUrl = isDev
-      ? 'http://localhost:3001'
-      : 'https://mu-labz-backend.onrender.com';
+    let backendUrl;
+    
+    if (isDev) {
+      backendUrl = 'http://localhost:3001';
+    } else {
+      // For production, use Render backend
+      backendUrl = 'https://mu-labz-backend.onrender.com';
+    }
 
-    console.log('[PartyRoom] Connecting to backend at', backendUrl);
+    console.log('[PartyRoom] Connecting to backend at', backendUrl, '| Dev:', isDev);
 
     socket = io(backendUrl, {
       reconnection: true,
@@ -64,11 +69,14 @@ const PartyRoom = (() => {
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 10,
       reconnectionInitialDelay: 1000,
-      transports: ['polling', 'websocket'], // Try polling first (more reliable on some networks)
-      secure: !isDev, // HTTPS for production
-      rejectUnauthorized: false, // Allow self-signed certs in development
+      transports: ['websocket', 'polling'], // WebSocket first, then polling fallback
+      secure: !isDev,
+      rejectUnauthorized: false,
       timeout: 20000,
       forceNew: true,
+      path: '/socket.io/',
+      upgrade: true,
+      rememberUpgrade: true,
     });
 
     _attachSocketListeners();

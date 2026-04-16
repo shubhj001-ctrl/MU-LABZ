@@ -40,16 +40,27 @@
   align-items: center;
   gap: 1rem;
   padding: 2rem;
-  border: 2px solid var(--border-color, #333);
+  border: 2px solid var(--accent-color, #1db954);
   border-radius: 12px;
-  background: var(--bg-secondary, #1a1a1a);
+  background: linear-gradient(135deg, #1db954 0%, #1aa34a 100%);
+  color: #000;
+  font-weight: 600;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
 }
 
 .party-entry-btn:hover {
-  background: var(--bg-hover, #222);
-  border-color: var(--accent-color, #1db954);
+  background: linear-gradient(135deg, #1ed760 0%, #1db954 100%);
+  border-color: #1ed760;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+.party-entry-btn svg {
+  color: #000;
+  stroke-width: 2.5;
 }
 
 /* ─── Modal ─── */

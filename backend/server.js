@@ -21,13 +21,23 @@ const server = http.createServer(app);
 const corsOrigins = [
   'http://localhost:3000',
   'http://localhost:8000',
+  'http://localhost:5173', // Vite dev server
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:5173',
   'https://mulabz.vercel.app',
   'https://mu-labz-backend.onrender.com',
 ];
 
 const corsOptions = {
-  origin: corsOrigins,
+  origin: function(origin, callback) {
+    if (!origin || corsOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'), false);
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -41,7 +51,12 @@ const io = socketIO(server, {
   allowEIO3: true,
   transports: ['websocket', 'polling'],
   pingInterval: 25000,
-  pingTimeout: 60000
+  pingTimeout: 60000,
+  maxHttpBufferSize: 1e6,
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000,
+    skipMiddlewares: true,
+  }
 });
 
 app.use(express.json());
@@ -125,11 +140,22 @@ function deleteRoom(roomId) {
 // ── Socket Events ───────────────────────────────────────────────────
 
 io.on('connection', (socket) => {
+  const origin = socket.handshake.headers.origin || 'unknown';
   console.log(`✅ [Socket] User connected: ${socket.id}`);
+  console.log(`📍 [Socket] From origin: ${origin}`);
+  console.log(`🔗 [Socket] Transport: ${socket.conn.transport.name}`);
 
   socket.emit('connect:success', { 
     message: 'Connected to Party Room backend',
     timestamp: new Date().toISOString()
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error(`⚠️  [Socket] Connection error for ${socket.id}:`, error?.message);
+  });
+
+  socket.on('error', (error) => {
+    console.error(`⚠️  [Socket] Error for ${socket.id}:`, error?.message);
   });
 
   socket.on('room:create', (data) => {
