@@ -58,7 +58,7 @@ const PartyRoom = (() => {
       backendUrl = 'http://localhost:3001';
       console.log('[PartyRoom] 🔧 Development mode - using localhost backend');
     } else {
-      backendUrl = 'https://mu-labz-backend.onrender.com';
+      backendUrl = 'https://mulabz.onrender.com';
       console.log('[PartyRoom] 🌐 Production mode - using Render backend');
       
       // Show backend status check
