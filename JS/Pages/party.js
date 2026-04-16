@@ -21,13 +21,77 @@ const PartyPage = (() => {
     });
     listeners = {};
 
+    // Hide mini player when in party room
+    const playerBar = document.getElementById('player-bar');
+    if (playerBar) {
+      playerBar.style.display = 'none';
+    }
+
     if (params.roomId) {
       _showPartyInterface(container, params.roomId);
     } else if (PartyRoom && PartyRoom.getState && PartyRoom.getState().roomId) {
       _showPartyInterface(container, PartyRoom.getState().roomId);
     } else {
-      _showPartyEntry(container);
+      // Check for saved session and attempt auto-rejoin
+      _attemptSessionRecovery(container);
     }
+  }
+
+  function _attemptSessionRecovery(container) {
+    if (!PartyRoom || !PartyRoom.getSessionRoom) {
+      _showPartyEntry(container);
+      return;
+    }
+
+    const savedRoomId = PartyRoom.getSessionRoom();
+    if (!savedRoomId) {
+      _showPartyEntry(container);
+      return;
+    }
+
+    // Show loading state while attempting recovery
+    container.innerHTML = `
+      <div class="party-loading-container">
+        <div class="spinner"></div>
+        <p>Reconnecting to room...</p>
+      </div>
+    `;
+
+    // Initialize and rejoin the saved room
+    PartyRoom.init();
+    let connectionAttempts = 0;
+
+    const checkConnection = setInterval(() => {
+      connectionAttempts++;
+      
+      if (PartyRoom.isConnected()) {
+        clearInterval(checkConnection);
+        console.log('[PartyPage] Connection established, rejoining saved room:', savedRoomId);
+        PartyRoom.joinRoom(savedRoomId, null);
+        
+        // Wait for room join completion
+        let joinAttempts = 0;
+        const checkJoin = setInterval(() => {
+          joinAttempts++;
+          const state = PartyRoom.getState();
+          
+          if (state.roomId === savedRoomId && state.userId) {
+            clearInterval(checkJoin);
+            _showPartyInterface(container, savedRoomId);
+          } else if (joinAttempts > 100) { // 10 second timeout
+            clearInterval(checkJoin);
+            console.error('[PartyPage] Failed to rejoin room');
+            _showPartyEntry(container);
+            PartyRoom.clearSession();
+          }
+        }, 100);
+      } else if (connectionAttempts > 50) { // 5 second timeout
+        clearInterval(checkConnection);
+        console.error('[PartyPage] Failed to reconnect');
+        _showPartyEntry(container);
+        PartyRoom.clearSession();
+      }
+    }, 100);
   }
 
   function _showPartyEntry(container) {
@@ -554,19 +618,43 @@ const PartyPage = (() => {
 
   function _updateBucketUI(container) {
     const state = PartyRoom.getState();
+    const isDJ = state.role === 'dj';
     const bucketList = container.querySelector('#party-bucket-list');
 
     bucketList.innerHTML = state.bucket.length === 0 
       ? '<p class="empty-msg">No songs in queue</p>'
       : state.bucket.map((item, idx) => `
-          <div class="bucket-item">
+          <div class="bucket-item" data-song-id="${item.songId}" draggable="${isDJ ? 'true' : 'false'}" style="cursor: ${isDJ ? 'pointer' : 'default'};">
             <div class="bucket-info">
               <p class="bucket-title">${escapeHtml(item.title)}</p>
               <p class="bucket-artist">${escapeHtml(item.artist)}</p>
               <p class="bucket-by">by ${escapeHtml(item.addedBy)}</p>
             </div>
+            ${isDJ ? '<div class="bucket-play-indicator">▶</div>' : ''}
           </div>
         `).join('');
+
+    // Add click handlers for DJ to play songs
+    if (isDJ) {
+      bucketList.querySelectorAll('.bucket-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const songId = e.currentTarget.dataset.songId;
+          PartyRoom.playFromQueue(songId);
+          showToast('▶ Playing from queue...');
+        });
+      });
+
+      // Optional: Add drag-drop reorder indicators (future feature)
+      bucketList.querySelectorAll('.bucket-item').forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          item.classList.add('dragging');
+        });
+        item.addEventListener('dragend', (e) => {
+          item.classList.remove('dragging');
+        });
+      });
+    }
   }
 
   function _updateUsersUI(container) {

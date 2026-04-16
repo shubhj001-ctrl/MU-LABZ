@@ -104,6 +104,12 @@ const LibraryPage = (() => {
   }
 
   function render(container, params = {}) {
+    // Restore mini player visibility when leaving party room
+    const playerBar = document.getElementById('player-bar');
+    if (playerBar) {
+      playerBar.style.display = '';
+    }
+
     container.innerHTML = `
       <div class="page" id="page-library">
         <div class="topbar">

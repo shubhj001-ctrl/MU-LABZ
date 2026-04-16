@@ -35,6 +35,12 @@ const RecentlyPlayedPage = (() => {
   }
 
   async function render(container) {
+    // Restore mini player visibility when leaving party room
+    const playerBar = document.getElementById('player-bar');
+    if (playerBar) {
+      playerBar.style.display = '';
+    }
+
     // Check if history is expired
     clearExpiredHistory();
 

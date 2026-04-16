@@ -206,7 +206,9 @@ const PartyRoom = (() => {
         // Current user was removed
         document.dispatchEvent(new CustomEvent('party:userRemovedSelf', { detail: data }));
       } else {
+        // Remove from both users and djs arrays
         PartyState.users = PartyState.users.filter(u => u.userId !== data.userId);
+        PartyState.djs = PartyState.djs.filter(d => d.userId !== data.userId);
       }
       document.dispatchEvent(new CustomEvent('party:userRemoved', { detail: data }));
     });
@@ -345,10 +347,41 @@ const PartyRoom = (() => {
     leaveRoom: () => {
       if (!socket || !isConnected) return;
       socket.emit('room:leave', { roomId: PartyState.roomId });
+      localStorage.removeItem('mu_labz_party_roomId');
+      localStorage.removeItem('mu_labz_party_state');
       PartyState.roomId = null;
       PartyState.users = [];
       PartyState.djs = [];
       PartyState.bucket = [];
+    },
+
+    // Session persistence
+    saveSession: () => {
+      if (PartyState.roomId) {
+        localStorage.setItem('mu_labz_party_roomId', PartyState.roomId);
+        localStorage.setItem('mu_labz_party_state', JSON.stringify({
+          roomId: PartyState.roomId,
+          roomName: PartyState.roomName,
+          roomType: PartyState.roomType,
+          userId: PartyState.userId,
+          role: PartyState.role,
+          partyName: currentPartyName,
+        }));
+      }
+    },
+
+    getSessionRoom: () => {
+      return localStorage.getItem('mu_labz_party_roomId');
+    },
+
+    getSessionState: () => {
+      const state = localStorage.getItem('mu_labz_party_state');
+      return state ? JSON.parse(state) : null;
+    },
+
+    clearSession: () => {
+      localStorage.removeItem('mu_labz_party_roomId');
+      localStorage.removeItem('mu_labz_party_state');
     },
 
     // ── User Management ──────────────────────────────────────────
@@ -362,6 +395,27 @@ const PartyRoom = (() => {
     },
 
     // ── Playback Controls (DJ only) ──────────────────────────────
+
+    playFromQueue: (songId) => {
+      if (!socket || !isConnected) return;
+      if (PartyState.role !== 'dj') {
+        console.warn('[PartyRoom] Only DJ can play songs');
+        return;
+      }
+      const track = PartyState.bucket.find(b => b.songId === songId);
+      if (track) {
+        socket.emit('playback:play', {
+          roomId: PartyState.roomId,
+          currentSong: { 
+            id: track.songId, 
+            title: track.title, 
+            artist: track.artist,
+            image: track.image,
+          },
+          currentTime: 0,
+        });
+      }
+    },
 
     playTrack: (track) => {
       if (!socket || !isConnected) return;
@@ -426,6 +480,20 @@ const PartyRoom = (() => {
     },
   };
 })();
+
+// Auto-save session on important events
+document.addEventListener('party:roomCreated', () => {
+  setTimeout(() => PartyRoom.saveSession(), 100);
+});
+document.addEventListener('party:roomJoined', () => {
+  setTimeout(() => PartyRoom.saveSession(), 100);
+});
+document.addEventListener('party:play', () => PartyRoom.saveSession());
+document.addEventListener('party:next', () => PartyRoom.saveSession());
+document.addEventListener('party:bucketAdd', () => PartyRoom.saveSession());
+document.addEventListener('party:bucketRemove', () => PartyRoom.saveSession());
+document.addEventListener('party:userJoined', () => PartyRoom.saveSession());
+document.addEventListener('party:userLeft', () => PartyRoom.saveSession());
 
 // Load saved party name
 const savedPartyName = localStorage.getItem('mu_labz_party_name');
