@@ -28,13 +28,92 @@ const PartyPage = (() => {
     }
 
     if (params.roomId) {
-      _showPartyInterface(container, params.roomId);
+      // When joining via URL params, need to wait for socket connection and room join
+      _joinRoomFromURL(container, params.roomId);
     } else if (PartyRoom && PartyRoom.getState && PartyRoom.getState().roomId) {
       _showPartyInterface(container, PartyRoom.getState().roomId);
     } else {
       // Check for saved session and attempt auto-rejoin
       _attemptSessionRecovery(container);
     }
+  }
+
+  function _joinRoomFromURL(container, roomId) {
+    // Check if already in the correct room
+    const currentState = PartyRoom?.getState?.() || {};
+    if (currentState.roomId === roomId && currentState.userId) {
+      // Already in the room, skip loading and show interface immediately
+      _showPartyInterface(container, roomId);
+      return;
+    }
+
+    // Show loading state while joining
+    container.innerHTML = `
+      <div class="party-loading-container">
+        <div class="spinner"></div>
+        <p>Joining room...</p>
+      </div>
+    `;
+
+    // Check if we need to initialize PartyRoom
+    const needsInit = !PartyRoom || !PartyRoom.isConnected || !PartyRoom.isConnected();
+    
+    // Check if switching rooms
+    if (currentState.roomId && currentState.roomId !== roomId) {
+      console.log('[PartyPage] Switching from room', currentState.roomId, 'to', roomId);
+      PartyRoom.leaveRoom();
+    }
+
+    // Initialize PartyRoom if needed
+    if (needsInit) {
+      PartyRoom.init();
+    }
+
+    let connectionAttempts = 0;
+    const checkConnection = setInterval(() => {
+      connectionAttempts++;
+      
+      if (PartyRoom.isConnected()) {
+        clearInterval(checkConnection);
+        console.log('[PartyPage] Connection established, joining room:', roomId);
+        
+        // Check again if already in room (could have joined via modal while initializing)
+        const state = PartyRoom.getState();
+        if (state.roomId === roomId && state.userId) {
+          _showPartyInterface(container, roomId);
+          return;
+        }
+        
+        // Set party name from localStorage or generate a random guest name
+        const partyName = localStorage.getItem('mu_labz_party_name') || `Guest${Math.floor(Math.random() * 1000)}`;
+        PartyRoom.setPartyName(partyName);
+        
+        // Call joinRoom only if not already in room (double-join protection)
+        if (!state.userId) {
+          PartyRoom.joinRoom(roomId, null); // null = no password for auto-join from URL
+        }
+        
+        // Wait for room join completion
+        let joinAttempts = 0;
+        const checkJoin = setInterval(() => {
+          joinAttempts++;
+          const state = PartyRoom.getState();
+          
+          if (state.roomId === roomId && state.userId) {
+            clearInterval(checkJoin);
+            _showPartyInterface(container, roomId);
+          } else if (joinAttempts > 100) { // 10 second timeout
+            clearInterval(checkJoin);
+            console.error('[PartyPage] Failed to join room');
+            container.innerHTML = '<div class="party-error"><p>❌ Failed to join room. Please try again.</p><a href="#home">Back to Home</a></div>';
+          }
+        }, 100);
+      } else if (connectionAttempts > 50) { // 5 second timeout
+        clearInterval(checkConnection);
+        console.error('[PartyPage] Failed to connect to server');
+        container.innerHTML = '<div class="party-error"><p>❌ Failed to connect to server. Please try again later.</p><a href="#home">Back to Home</a></div>';
+      }
+    }, 100);
   }
 
   function _attemptSessionRecovery(container) {
@@ -564,12 +643,15 @@ const PartyPage = (() => {
     const playHandler = (event) => {
       _updateUIState(container);
       const song = event.detail?.currentSong;
+      const playStartTime = event.detail?.playStartTime;
+      
       console.log('[PartyPage] playHandler called', { 
         title: song?.title,
         hasPlayer: !!window.Player, 
         hasPlayMethod: typeof window.Player?.play,
         source: song?.source,
         hasAudio: !!song?.audio,
+        playStartTime,
       });
       
       if (!song) {
@@ -583,7 +665,7 @@ const PartyPage = (() => {
         setTimeout(() => {
           if (window.Player && typeof window.Player.play === 'function') {
             console.log('[PartyPage] ✓ Player now available, playing:', song.title);
-            Player.play(song, [song], 0);
+            window.Player.play(song, [song], 0);
           } else {
             console.error('[PartyPage] Player still not available after retry');
           }

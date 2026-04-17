@@ -288,16 +288,22 @@ io.on('connection', (socket) => {
     const room = getRoom(roomId);
     if (!room) return;
 
+    // Record server timestamp for sync
+    const playStartTime = Date.now();
+    
     room.currentSong = currentSong;
     room.currentTime = currentTime || 0;
     room.isPlaying = true;
+    room.playStartTime = playStartTime; // Store for sync
 
     io.to(roomId).emit('playback:play', {
       currentSong,
       currentTime,
+      playStartTime, // Send to all clients for sync
+      serverTime: Date.now(),
     });
 
-    console.log(`[Playback] Playing: ${currentSong?.title} in ${roomId}`);
+    console.log(`[Playback] Playing: ${currentSong?.title} in ${roomId} at ${playStartTime}`);
   });
 
   // DJ Controls - Pause

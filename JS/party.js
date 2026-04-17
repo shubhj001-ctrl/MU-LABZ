@@ -227,10 +227,20 @@ const PartyRoom = (() => {
       });
       PartyState.isPlaying = true;
       PartyState.currentSong = data.currentSong;
-      PartyState.currentTime = data.currentTime;
+      PartyState.currentTime = data.currentTime || 0;
+      PartyState.playStartTime = data.playStartTime; // Store server timestamp for sync
+      
       if (data.currentSong) {
         PartyState.bucket = PartyState.bucket.filter(b => b.songId !== data.currentSong.id && b.id !== data.currentSong.id);
       }
+      
+      // Calculate correct playback position based on server time
+      if (data.playStartTime && data.serverTime) {
+        const elapsedTime = Date.now() - data.playStartTime;
+        PartyState.currentTime = (data.currentTime || 0) + (elapsedTime / 1000); // Convert ms to seconds
+        console.log('[PartyRoom] Sync: elapsed time since play started:', elapsedTime, 'ms, current time:', PartyState.currentTime);
+      }
+      
       document.dispatchEvent(new CustomEvent('party:play', { detail: data }));
     });
 
@@ -474,6 +484,23 @@ const PartyRoom = (() => {
       });
     },
 
+    // Aliases for convenience
+    pause: () => {
+      if (!socket || !isConnected) return;
+      socket.emit('playback:pause', {
+        roomId: PartyState.roomId,
+        currentTime: PartyState.currentTime,
+      });
+    },
+
+    resume: () => {
+      if (!socket || !isConnected) return;
+      socket.emit('playback:resume', {
+        roomId: PartyState.roomId,
+        currentTime: PartyState.currentTime,
+      });
+    },
+
     seekTo: (time) => {
       if (!socket || !isConnected) return;
       socket.emit('playback:seek', {
@@ -483,6 +510,14 @@ const PartyRoom = (() => {
     },
 
     skipToNext: () => {
+      if (!socket || !isConnected) return;
+      socket.emit('playback:next', {
+        roomId: PartyState.roomId,
+      });
+    },
+
+    // Alias for convenience
+    next: () => {
       if (!socket || !isConnected) return;
       socket.emit('playback:next', {
         roomId: PartyState.roomId,
