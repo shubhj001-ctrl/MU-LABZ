@@ -217,7 +217,14 @@ const PartyRoom = (() => {
     // ── Playback Events ══════════════════════════════════════════
 
     socket.on('playback:play', (data) => {
-      console.log('[PartyRoom] Playing:', data.currentSong?.title);
+      console.log('[PartyRoom] playback:play received:', data);
+      console.log('[PartyRoom] currentSong details:', {
+        title: data.currentSong?.title,
+        artist: data.currentSong?.artist,
+        source: data.currentSong?.source,
+        hasAudio: !!data.currentSong?.audio,
+        duration: data.currentSong?.duration,
+      });
       PartyState.isPlaying = true;
       PartyState.currentSong = data.currentSong;
       PartyState.currentTime = data.currentTime;
@@ -412,8 +419,9 @@ const PartyRoom = (() => {
         return;
       }
       const track = PartyState.bucket.find(b => b.songId === songId);
+      console.log('[PartyRoom] playFromQueue - Found track:', track);
       if (track) {
-        socket.emit('playback:play', {
+        const playbackData = {
           roomId: PartyState.roomId,
           currentSong: { 
             id: track.songId || track.id,
@@ -426,7 +434,11 @@ const PartyRoom = (() => {
             genre: track.genre,
           },
           currentTime: 0,
-        });
+        };
+        console.log('[PartyRoom] Emitting playback:play with:', playbackData);
+        socket.emit('playback:play', playbackData);
+      } else {
+        console.warn('[PartyRoom] Track not found in bucket:', songId);
       }
     },
 

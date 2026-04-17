@@ -564,19 +564,52 @@ const PartyPage = (() => {
     const playHandler = (event) => {
       _updateUIState(container);
       const song = event.detail?.currentSong;
-      if (song && window.Player && typeof Player.play === 'function') {
-        console.log('[PartyPage] Calling Player.play() for:', song.title);
-        // Pass just the song object and empty queue since party room manages queue separately
+      console.log('[PartyPage] playHandler called', { song, hasPlayer: !!window.Player, hasPlayMethod: typeof window.Player?.play });
+      
+      if (!song) {
+        console.warn('[PartyPage] No song in event detail');
+        return;
+      }
+      
+      if (!window.Player) {
+        console.warn('[PartyPage] Player module not found');
+        return;
+      }
+      
+      if (typeof Player.play !== 'function') {
+        console.warn('[PartyPage] Player.play is not a function');
+        return;
+      }
+      
+      try {
+        console.log('[PartyPage] ▶ Calling Player.play() for:', song.title, 'source:', song.source);
         Player.play(song, [song], 0);
+        console.log('[PartyPage] ✓ Player.play() executed successfully');
+      } catch (error) {
+        console.error('[PartyPage] Error calling Player.play():', error);
       }
     };
 
     const nextHandler = (event) => {
       _updateUIState(container);
       const song = event.detail?.currentSong;
-      if (song && window.Player && typeof Player.play === 'function') {
-        console.log('[PartyPage] Calling Player.play() for next:', song.title);
+      console.log('[PartyPage] nextHandler called', { song });
+      
+      if (!song) {
+        console.warn('[PartyPage] No song in next event detail');
+        return;
+      }
+      
+      if (!window.Player || typeof Player.play !== 'function') {
+        console.warn('[PartyPage] Player not available for next');
+        return;
+      }
+      
+      try {
+        console.log('[PartyPage] ⏭ Calling Player.play() for next:', song.title);
         Player.play(song, [song], 0);
+      } catch (error) {
+        console.error('[PartyPage] Error calling Player.play() for next:', error);
       }
     };
 
@@ -728,26 +761,73 @@ const PartyPage = (() => {
     // Update bucket
     _updateBucketUI(container);
 
-    // Update now playing
-    const npContainer = container.querySelector('.now-playing');
-    if (npContainer) {
+    // Rebuild entire player section (switching between np-empty and now-playing)
+    const playerSection = container.querySelector('.party-player');
+    if (playerSection) {
+      const isDJ = state.role === 'dj';
+      
+      // Rebuild the now-playing/empty section
+      let playerHTML = '';
       if (state.currentSong) {
-        npContainer.innerHTML = `
-          <div class="np-cover">
-            <img src="${state.currentSong.image || 'assets/placeholder.png'}" alt="Cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2246%22%3E🎵%3C/text%3E%3C/svg%3E'">
+        playerHTML = `
+          <div class="now-playing">
+            <div class="np-cover">
+              <img src="${state.currentSong.image || 'assets/placeholder.png'}" alt="Cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2246%22%3E🎵%3C/text%3E%3C/svg%3E'">
+            </div>
+            <div class="np-info">
+              <h2>${escapeHtml(state.currentSong.title)}</h2>
+              <p>${escapeHtml(state.currentSong.artist)}</p>
+            </div>
           </div>
-          <div class="np-info">
-            <h2>${escapeHtml(state.currentSong.title)}</h2>
-            <p>${escapeHtml(state.currentSong.artist)}</p>
+        `;
+      } else {
+        playerHTML = `
+          <div class="np-empty">
+            <p>♪ No song playing</p>
+            <p style="font-size: 0.85rem; color: #999;">Add songs to queue to get started</p>
           </div>
         `;
       }
-    }
 
-    // Update play button for DJ
-    const playBtn = container.querySelector('#party-play-btn');
-    if (playBtn) {
-      playBtn.textContent = state.isPlaying ? '⏸' : '▶';
+      // Add controls
+      const controlsHTML = isDJ ? `
+        <div class="dj-controls">
+          <button id="party-play-btn" class="btn-dj-control" title="Play/Pause">
+            ${state.isPlaying ? '⏸' : '▶'}
+          </button>
+          <button id="party-next-btn" class="btn-dj-control" title="Skip to next">⏭</button>
+        </div>
+      ` : `
+        <div class="guest-info">
+          <p>🎧 Only the DJ can control playback</p>
+        </div>
+      `;
+
+      // Rebuild the entire player
+      playerSection.innerHTML = playerHTML + controlsHTML + `
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+          <div class="progress-time"><span>0:00</span> / <span>0:00</span></div>
+        </div>
+      `;
+
+      // Re-attach DJ controls listeners
+      if (isDJ) {
+        const playBtn = playerSection.querySelector('#party-play-btn');
+        const nextBtn = playerSection.querySelector('#party-next-btn');
+        
+        playBtn?.addEventListener('click', () => {
+          if (state.isPlaying) {
+            PartyRoom.pause();
+          } else if (state.currentSong) {
+            PartyRoom.resume();
+          }
+        });
+
+        nextBtn?.addEventListener('click', () => {
+          PartyRoom.skipToNext();
+        });
+      }
     }
   }
 

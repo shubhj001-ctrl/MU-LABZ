@@ -384,23 +384,28 @@ io.on('connection', (socket) => {
 
   // Bucket - Add Song
   socket.on('bucket:add', (data) => {
-    const { roomId, songId, title, artist, image, addedBy } = data;
+    const { roomId, songId, title, artist, image, addedBy, source, audio, duration, genre } = data;
     const room = getRoom(roomId);
     if (!room) return;
 
     const item = {
       songId,
+      id: songId,
       title,
       artist,
       image,
       addedBy,
       addedAt: Date.now(),
+      source: source || 'jiosaavn',
+      audio,
+      duration: duration || 0,
+      genre,
     };
 
     room.bucket.push(item);
 
     io.to(roomId).emit('bucket:add', item);
-    console.log(`[Bucket] Added to ${roomId}: ${title}`);
+    console.log(`[Bucket] Added to ${roomId}: ${title} (source: ${source}, hasAudio: ${!!audio})`);
   });
 
   // Bucket - Remove Song
