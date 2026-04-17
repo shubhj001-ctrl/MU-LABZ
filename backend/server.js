@@ -83,6 +83,7 @@ app.get('/rooms', (req, res) => {
 const rooms = new Map(); // roomId -> room object
 const userSockets = new Map(); // userId -> socket id
 const socketToUser = new Map(); // socket id -> { userId, roomId }
+const recentlyKicked = new Map(); // socketId -> { roomId, kickTime } - track recently kicked users to prevent immediate rejoin
 
 // ── Room Structure ─────────────────────────────────────────────────
 
@@ -103,6 +104,9 @@ function createRoom(roomName, maxUsers, roomType, password, creatorId, creatorPa
     // Users
     djs: [{ userId: creatorId, partyName: creatorPartyName, socketId: null }],
     users: [],
+    
+    // Join requests (users waiting for DJ approval)
+    pendingJoins: [], // [{ userId, partyName, socketId, requestTime }, ...]
     
     // Playback state
     currentSong: null,
@@ -184,7 +188,7 @@ io.on('connection', (socket) => {
     console.log(`[Socket] ${partyName} created room ${room.id} (${roomType})`);
   });
 
-  socket.on('room:join', (data) => {
+  socket.on('room:joinRequest', (data) => {
     const userId = socket.id;
     const { roomId, password, partyName } = data;
     const room = getRoom(roomId);
@@ -204,44 +208,179 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Check room capacity
-    if (room.users.length + room.djs.length >= room.maxUsers) {
-      socket.emit('error', { type: 'ROOM_FULL', message: 'Room is full' });
-      console.log(`[Error] Room ${roomId} is full`);
+    // Check if already in request list
+    if (room.pendingJoins.find(req => req.userId === userId)) {
+      socket.emit('error', { type: 'ALREADY_REQUESTED', message: 'You already have a pending request' });
       return;
     }
 
-    // Add user to room (both public and private rooms join directly now)
-    const user = { userId, partyName, socketId: socket.id, role: 'guest' };
-    room.users.push(user);
+    // Add to pending joins list
+    const joinRequest = { userId, partyName, socketId: socket.id, requestTime: Date.now() };
+    room.pendingJoins.push(joinRequest);
     
-    socket.join(room.id);
     socketToUser.set(socket.id, { userId, roomId });
     userSockets.set(userId, socket.id);
 
-    // Send room state to new user
-    socket.emit('room:joined', {
+    // Notify user their request is pending
+    socket.emit('joinRequest:pending', {
       roomId: room.id,
       roomName: room.name,
-      roomType: room.type,
-      userId,
-      role: 'guest',
-      djs: room.djs,
-      users: room.users,
-      bucket: room.bucket,
-      currentSong: room.currentSong,
-      isPlaying: room.isPlaying,
-      currentTime: room.currentTime,
+      message: 'Your request to join has been sent. Waiting for DJ approval...',
     });
 
-    // Notify others that user joined
+   // Notify DJ(s) of new join request
+    room.djs.forEach(dj => {
+      const djSocket = dj.socketId ? io.sockets.sockets.get(dj.socketId) : null;
+      if (djSocket) {
+        djSocket.emit('joinRequest:new', {
+          requestId: userId,
+          partyName,
+          pendingRequests: room.pendingJoins.map(req => ({
+            userId: req.userId,
+            partyName: req.partyName,
+            requestTime: req.requestTime,
+          })),
+        });
+      }
+    });
+
+    console.log(`[Socket] ${partyName} requested to join room ${roomId}`);
+  });
+
+  // DJ: Approve join request
+  socket.on('joinRequest:approve', (data) => {
+    const { roomId, requestUserId } = data;
+    const room = getRoom(roomId);
+    const djUser = socketToUser.get(socket.id);
+
+    if (!room) return;
+    if (!djUser) return;
+
+    // Check if DJ
+    const isDJ = room.djs.find(d => d.userId === djUser.userId);
+    if (!isDJ) {
+      socket.emit('error', { type: 'NOT_AUTHORIZED', message: 'Only DJ can approve requests' });
+      return;
+    }
+
+    // Find pending request
+    const request = room.pendingJoins.find(req => req.userId === requestUserId);
+    if (!request) {
+      socket.emit('error', { type: 'REQUEST_NOT_FOUND', message: 'Join request not found' });
+      return;
+    }
+
+    // Check room capacity
+    if (room.users.length + room.djs.length >= room.maxUsers) {
+      socket.emit('error', { type: 'ROOM_FULL', message: 'Room is full' });
+      
+      // Notify user they were rejected (room full)
+      const userSocket = io.sockets.sockets.get(request.socketId);
+      if (userSocket) {
+        userSocket.emit('joinRequest:rejected', { 
+          roomId,
+          reason: 'Room is full' 
+        });
+        userSocket.disconnect(true);
+        userSockets.delete(requestUserId);
+        socketToUser.delete(request.socketId);
+      }
+      return;
+    }
+
+    // Move from pending to users
+    room.pendingJoins = room.pendingJoins.filter(req => req.userId !== requestUserId);
+    const user = { userId: requestUserId, partyName: request.partyName, socketId: request.socketId, role: 'guest' };
+    room.users.push(user);
+    
+    // Join user to socket.io room
+    io.sockets.sockets.get(request.socketId)?.join(room.id);
+
+    // Send room state to approved user
+    const userSocket = io.sockets.sockets.get(request.socketId);
+    if (userSocket) {
+      userSocket.emit('joinRequest:approved', {
+        roomId: room.id,
+        roomName: room.name,
+        roomType: room.type,
+        userId: requestUserId,
+        role: 'guest',
+        djs: room.djs,
+        users: room.users,
+        bucket: room.bucket,
+        currentSong: room.currentSong,
+        isPlaying: room.isPlaying,
+        currentTime: room.currentTime,
+      });
+    }
+
+    // Notify room of new user
     io.to(room.id).emit('user:joined', {
-      userId,
-      partyName,
+      userId: requestUserId,
+      partyName: request.partyName,
       role: 'guest',
     });
 
-    console.log(`[Socket] ${partyName} joined room ${roomId}`);
+    // Update DJ's pending requests list
+    io.to(room.id).emit('joinRequest:list', {
+      pendingRequests: room.pendingJoins.map(req => ({
+        userId: req.userId,
+        partyName: req.partyName,
+        requestTime: req.requestTime,
+      })),
+    });
+
+    console.log(`[Socket] DJ approved ${request.partyName} to join room ${roomId}`);
+  });
+
+  // DJ: Reject join request
+  socket.on('joinRequest:reject', (data) => {
+    const { roomId, requestUserId } = data;
+    const room = getRoom(roomId);
+    const djUser = socketToUser.get(socket.id);
+
+    if (!room) return;
+    if (!djUser) return;
+
+    // Check if DJ
+    const isDJ = room.djs.find(d => d.userId === djUser.userId);
+    if (!isDJ) {
+      socket.emit('error', { type: 'NOT_AUTHORIZED', message: 'Only DJ can reject requests' });
+      return;
+    }
+
+    // Find pending request
+    const request = room.pendingJoins.find(req => req.userId === requestUserId);
+    if (!request) {
+      socket.emit('error', { type: 'REQUEST_NOT_FOUND', message: 'Join request not found' });
+      return;
+    }
+
+    // Remove from pending
+    room.pendingJoins = room.pendingJoins.filter(req => req.userId !== requestUserId);
+
+    // Notify user they were rejected
+    const userSocket = io.sockets.sockets.get(request.socketId);
+    if (userSocket) {
+      userSocket.emit('joinRequest:rejected', { 
+        roomId,
+        reason: 'DJ rejected your request' 
+      });
+      userSocket.disconnect(true);
+      userSockets.delete(requestUserId);
+      socketToUser.delete(request.socketId);
+    }
+
+    // Update DJ's pending requests list
+    io.to(room.id).emit('joinRequest:list', {
+      pendingRequests: room.pendingJoins.map(req => ({
+        userId: req.userId,
+        partyName: req.partyName,
+        requestTime: req.requestTime,
+      })),
+    });
+
+    console.log(`[Socket] DJ rejected ${request.partyName}'s request to join room ${roomId}`);
   });
 
   // USER REMOVAL (DJ only)
@@ -265,11 +404,27 @@ io.on('connection', (socket) => {
     if (userToRemove) {
       room.users = room.users.filter(u => u.userId !== userIdToRemove);
       
-      // Notify removed user
+      // Notify removed user and disconnect them
       const userSocket = userSockets.get(userIdToRemove);
       if (userSocket) {
-        io.to(userSocket).emit('user:removed', { reason: 'DJ removed you from room' });
+        // Track this socket as recently kicked to prevent immediate rejoin
+        recentlyKicked.set(userSocket, { roomId, kickTime: Date.now() });
+        
+        // Notify user they were removed
+        io.to(userSocket).emit('user:removed', { 
+          userId: userIdToRemove,
+          reason: 'DJ removed you from room' 
+        });
+        
+        // Leave room
         io.sockets.sockets.get(userSocket)?.leave(roomId);
+        
+        // Disconnect socket so they can't hear music anymore
+        io.sockets.sockets.get(userSocket)?.disconnect(true);
+        
+        // Clean up tracking
+        userSockets.delete(userIdToRemove);
+        socketToUser.delete(userSocket);
       }
 
       // Notify room that user was removed
@@ -278,7 +433,7 @@ io.on('connection', (socket) => {
         partyName: userToRemove.partyName,
       });
 
-      console.log(`[User] ${userToRemove.partyName} removed from ${roomId} by DJ`);
+      console.log(`[User] ${userToRemove.partyName} removed from ${roomId} by DJ and disconnected`);
     }
   });
 

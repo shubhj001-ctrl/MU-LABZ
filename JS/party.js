@@ -179,6 +179,47 @@ const PartyRoom = (() => {
       document.dispatchEvent(new CustomEvent('party:roomClosed', { detail: data }));
     });
 
+    // Join request pending (waiting in lobby)
+    socket.on('joinRequest:pending', (data) => {
+      console.log('[PartyRoom] Join request pending:', data);
+      document.dispatchEvent(new CustomEvent('party:joinRequest:pending', { detail: data }));
+    });
+
+    // Join request approved by DJ
+    socket.on('joinRequest:approved', (data) => {
+      console.log('[PartyRoom] Join request approved, entering room:', data.roomId);
+      PartyState.roomId = data.roomId;
+      PartyState.roomName = data.roomName;
+      PartyState.roomType = data.roomType;
+      PartyState.userId = data.userId;
+      PartyState.role = data.role || 'guest';
+      PartyState.djs = data.djs || [];
+      PartyState.users = data.users || [];
+      PartyState.bucket = data.bucket || [];
+      PartyState.currentSong = data.currentSong;
+      PartyState.isPlaying = data.isPlaying;
+      PartyState.currentTime = data.currentTime;
+      document.dispatchEvent(new CustomEvent('party:joinRequest:approved', { detail: PartyState }));
+    });
+
+    // Join request rejected by DJ
+    socket.on('joinRequest:rejected', (data) => {
+      console.log('[PartyRoom] Join request rejected:', data);
+      document.dispatchEvent(new CustomEvent('party:joinRequest:rejected', { detail: data }));
+    });
+
+    // Pending requests list update (for DJ)
+    socket.on('joinRequest:list', (data) => {
+      console.log('[PartyRoom] Pending requests updated:', data);
+      document.dispatchEvent(new CustomEvent('party:joinRequest:list', { detail: data }));
+    });
+
+    // New join request arrived (for DJ)
+    socket.on('joinRequest:new', (data) => {
+      console.log('[PartyRoom] New join request:', data.partyName);
+      document.dispatchEvent(new CustomEvent('party:joinRequest:new', { detail: data }));
+    });
+
     // ── User Events ══════════════════════════════════════════════
 
     // User joined room
@@ -374,6 +415,37 @@ const PartyRoom = (() => {
         roomId,
         password,
         partyName: currentPartyName,
+      });
+    },
+
+    joinRoomRequest: (roomId, password = null) => {
+      if (!socket || !isConnected) {
+        console.error('[PartyRoom] Socket not connected');
+        document.dispatchEvent(new CustomEvent('party:error', {
+          detail: { type: 'NOT_CONNECTED', message: 'Not connected to server' }
+        }));
+        return;
+      }
+      socket.emit('room:joinRequest', {
+        roomId,
+        password,
+        partyName: currentPartyName,
+      });
+    },
+
+    approveJoinRequest: (roomId, requestUserId) => {
+      if (!socket || !isConnected) return;
+      socket.emit('joinRequest:approve', {
+        roomId,
+        requestUserId,
+      });
+    },
+
+    rejectJoinRequest: (roomId, requestUserId) => {
+      if (!socket || !isConnected) return;
+      socket.emit('joinRequest:reject', {
+        roomId,
+        requestUserId,
       });
     },
 

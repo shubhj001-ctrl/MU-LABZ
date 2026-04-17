@@ -234,6 +234,18 @@ const Player = (() => {
       else { State.playing?audio.pause():audio.play().catch(()=>{}); }
     },
 
+    pause() {
+      if (!currentTrack()) return;
+      if (_useYT) { if (ytPlayer?.pauseVideo) ytPlayer.pauseVideo(); }
+      else { audio.pause(); }
+    },
+
+    resume() {
+      if (!currentTrack()) return;
+      if (_useYT) { if (ytPlayer?.playVideo) ytPlayer.playVideo(); }
+      else { audio.play().catch(()=>{}); }
+    },
+
     prev() {
       if (State.queueIndex>0) { State.queueIndex--; this.play(State.queue[State.queueIndex]); }
       else if (currentTrack()) {

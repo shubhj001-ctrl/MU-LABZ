@@ -381,8 +381,9 @@ const PartyPage = (() => {
         
         if (PartyRoom.isConnected()) {
           clearInterval(checkConnection);
-          showToast('Joining room...');
-          PartyRoom.joinRoom(roomId, password);
+          showToast('Sending join request...');
+          // Use joinRoomRequest instead of joinRoom for request-based system
+          PartyRoom.joinRoomRequest(roomId, password);
         } else if (connectionAttempts > 50) { // 5 seconds timeout
           clearInterval(checkConnection);
           showToast('❌ Failed to connect to server. Check your connection.');
@@ -390,19 +391,32 @@ const PartyPage = (() => {
         }
       }, 100);
 
-      const handler = () => {
+      // Handle join request pending (waiting in lobby)
+      const pendingHandler = () => {
         clearInterval(checkConnection);
-        document.removeEventListener('party:roomJoined', handler);
-        document.removeEventListener('party:connectionError', errorHandler);
+        document.removeEventListener('party:joinRequest:pending', pendingHandler);
+        document.removeEventListener('party:joinRequest:rejected', errorHandler);
         document.removeEventListener('party:error', errorHandler);
-        showToast('✅ Joined room! Entering...');
+        showToast('📋 Waiting in lobby for DJ approval...');
+        _showLobbyWaitingModal(container, roomId);
+        modal.remove();
+      };
+
+      // Handle join request approved
+      const approvedHandler = () => {
+        clearInterval(checkConnection);
+        document.removeEventListener('party:joinRequest:pending', pendingHandler);
+        document.removeEventListener('party:joinRequest:approved', approvedHandler);
+        document.removeEventListener('party:joinRequest:rejected', errorHandler);
+        document.removeEventListener('party:error', errorHandler);
+        showToast('✅ Request approved! Entering room...');
         Router.navigate('party', { roomId: roomId });
         modal.remove();
       };
 
       const errorHandler = (e) => {
         clearInterval(checkConnection);
-        if (e.detail && (e.detail.type === 'ROOM_NOT_FOUND' || e.detail.type === 'INVALID_PASSWORD' || e.detail.type === 'ROOM_FULL')) {
+        if (e.detail && (e.detail.type === 'ROOM_NOT_FOUND' || e.detail.type === 'INVALID_PASSWORD' || e.detail.type === 'ROOM_FULL' || e.detail.type === 'ALREADY_REQUESTED')) {
           const msg = e.detail.type === 'INVALID_PASSWORD' ? '❌ Wrong passcode' : '❌ ' + (e.detail.message || 'Failed to join room');
           showToast(msg);
           console.error('[PartyPage] Join error:', e.detail);
@@ -414,13 +428,26 @@ const PartyPage = (() => {
         }
       };
 
+      const rejectedHandler = (e) => {
+        clearInterval(checkConnection);
+        document.removeEventListener('party:joinRequest:pending', pendingHandler);
+        document.removeEventListener('party:joinRequest:approved', approvedHandler);
+        document.removeEventListener('party:joinRequest:rejected', rejectedHandler);
+        document.removeEventListener('party:error', errorHandler);
+        const reason = e.detail?.reason || 'Your request was rejected';
+        showToast('❌ ' + reason);
+        console.error('[PartyPage] Join rejected:', e.detail);
+      };
+
       const backendOfflineHandler = (e) => {
         clearInterval(checkConnection);
         console.error('[PartyPage] Backend offline:', e.detail);
         showToast('❌ Backend server is offline. Please try again later or contact support.');
       };
 
-      document.addEventListener('party:roomJoined', handler);
+      document.addEventListener('party:joinRequest:pending', pendingHandler);
+      document.addEventListener('party:joinRequest:approved', approvedHandler);
+      document.addEventListener('party:joinRequest:rejected', rejectedHandler);
       document.addEventListener('party:connectionError', errorHandler);
       document.addEventListener('party:error', errorHandler);
       document.addEventListener('party:backendOffline', backendOfflineHandler);
@@ -429,6 +456,56 @@ const PartyPage = (() => {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.remove();
     });
+  }
+
+  function _showLobbyWaitingModal(container, roomId) {
+    const modal = document.createElement('div');
+    modal.className = 'party-modal-overlay';
+    modal.innerHTML = `
+      <div class="party-modal">
+        <div style="text-align: center;">
+          <div class="spinner" style="margin: 0 auto 1rem;"></div>
+          <h2>Waiting in Lobby</h2>
+          <p>📋 Your request to join has been sent to the DJ.</p>
+          <p style="color: #999; font-size: 0.9rem;">The DJ will review your request and approve or reject it.</p>
+        </div>
+        <div class="modal-actions" style="margin-top: 2rem;">
+          <button class="btn-secondary cancel-join-btn">Cancel Request</button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(modal);
+
+    // Handle DJ approval
+    const approvedHandler = () => {
+      document.removeEventListener('party:joinRequest:approved', approvedHandler);
+      document.removeEventListener('party:joinRequest:rejected', rejectedHandler);
+      showToast('✅ Your request was approved!');
+      Router.navigate('party', { roomId: roomId });
+      modal.remove();
+    };
+
+    // Handle DJ rejection
+    const rejectedHandler = (e) => {
+      document.removeEventListener('party:joinRequest:approved', approvedHandler);
+      document.removeEventListener('party:joinRequest:rejected', rejectedHandler);
+      const reason = e.detail?.reason || 'Your request was rejected';
+      showToast('❌ ' + reason);
+      modal.remove();
+    };
+
+    // Handle cancel request
+    modal.querySelector('.cancel-join-btn')?.addEventListener('click', () => {
+      // User will disconnect when they close modal
+      document.removeEventListener('party:joinRequest:approved', approvedHandler);
+      document.removeEventListener('party:joinRequest:rejected', rejectedHandler);
+      showToast('Request cancelled');
+      modal.remove();
+    });
+
+    document.addEventListener('party:joinRequest:approved', approvedHandler);
+    document.addEventListener('party:joinRequest:rejected', rejectedHandler);
   }
 
   function _showPartyInterface(container, roomId) {
@@ -528,6 +605,14 @@ const PartyPage = (() => {
 
           <!-- Right Sidebar: Users -->
           <div class="party-right-sidebar">
+            ${isDJ ? `
+              <div class="party-section">
+                <h3>📋 Pending Requests</h3>
+                <div id="party-pending-requests" class="pending-requests-list">
+                  <p class="empty-msg">No pending requests</p>
+                </div>
+              </div>
+            ` : ''}
             <div class="party-section">
               <h3>👥 Users in Room</h3>
               <div id="party-users-list" class="users-list">
@@ -717,6 +802,40 @@ const PartyPage = (() => {
       }
     };
 
+    const pauseHandler = (event) => {
+      console.log('[PartyPage] pauseHandler called - pausing playback');
+      _updateUIState(container);
+      
+      if (!window.Player || typeof window.Player.pause !== 'function') {
+        console.warn('[PartyPage] Player not available for pause');
+        return;
+      }
+      
+      try {
+        console.log('[PartyPage] ⏸ Calling Player.pause()');
+        window.Player.pause();
+      } catch (error) {
+        console.error('[PartyPage] Error calling Player.pause():', error);
+      }
+    };
+
+    const resumeHandler = (event) => {
+      console.log('[PartyPage] resumeHandler called - resuming playback');
+      _updateUIState(container);
+      
+      if (!window.Player || typeof window.Player.resume !== 'function') {
+        console.warn('[PartyPage] Player not available for resume');
+        return;
+      }
+      
+      try {
+        console.log('[PartyPage] ▶ Calling Player.resume()');
+        window.Player.resume();
+      } catch (error) {
+        console.error('[PartyPage] Error calling Player.resume():', error);
+      }
+    };
+
     // Handler for when current user is removed from party
     const userRemovedSelfHandler = (event) => {
       console.log('[PartyPage] User was removed from party');
@@ -738,21 +857,37 @@ const PartyPage = (() => {
       showToast('❌ Failed to add song - room may have closed');
     };
 
+    // Handler for pending join requests (DJ only)
+    const pendingRequestsListHandler = (event) => {
+      _updatePendingRequestsUI(container, event.detail?.pendingRequests || []);
+    };
+
+    // Handler for new join request (DJ only)
+    const newJoinRequestHandler = (event) => {
+      console.log('[PartyPage] New join request:', event.detail);
+      _updatePendingRequestsUI(container, event.detail?.pendingRequests || []);
+      showToast('🔔 New join request from ' + event.detail?.partyName);
+    };
+
     document.addEventListener('party:bucketAdd', updateHandler);
     document.addEventListener('party:bucketRemove', updateHandler);
     document.addEventListener('party:play', playHandler);
-    document.addEventListener('party:pause', updateHandler);
+    document.addEventListener('party:pause', pauseHandler);
+    document.addEventListener('party:resume', resumeHandler);
     document.addEventListener('party:next', nextHandler);
     document.addEventListener('party:userJoined', usersUpdateHandler);
     document.addEventListener('party:userLeft', usersUpdateHandler);
     document.addEventListener('party:userRemoved', usersUpdateHandler);
     document.addEventListener('party:userRemovedSelf', userRemovedSelfHandler);
     document.addEventListener('party:bucketAddError', bucketAddErrorHandler);
+    document.addEventListener('party:joinRequest:list', pendingRequestsListHandler);
+    document.addEventListener('party:joinRequest:new', newJoinRequestHandler);
 
     listeners.bucketAdd = { event: 'party:bucketAdd', handler: updateHandler };
     listeners.bucketRemove = { event: 'party:bucketRemove', handler: updateHandler };
     listeners.play = { event: 'party:play', handler: playHandler };
-    listeners.pause = { event: 'party:pause', handler: updateHandler };
+    listeners.pause = { event: 'party:pause', handler: pauseHandler };
+    listeners.resume = { event: 'party:resume', handler: resumeHandler };
     listeners.next = { event: 'party:next', handler: nextHandler };
     listeners.userJoined = { event: 'party:userJoined', handler: usersUpdateHandler };
     listeners.userLeft = { event: 'party:userLeft', handler: usersUpdateHandler };
@@ -895,6 +1030,55 @@ const PartyPage = (() => {
     // Update header user count
     const totalUsers = state.users.length + state.djs.length;
     container.querySelector('.header-users').textContent = `👥 ${totalUsers}`;
+  }
+
+  function _updatePendingRequestsUI(container, pendingRequests) {
+    const requestsList = container.querySelector('#party-pending-requests');
+    if (!requestsList) return;
+
+    if (!pendingRequests || pendingRequests.length === 0) {
+      requestsList.innerHTML = '<p class="empty-msg">No pending requests</p>';
+      return;
+    }
+
+    let html = '';
+    pendingRequests.forEach(req => {
+      html += `
+        <div class="pending-request-item">
+          <div class="request-info">
+            <span class="request-name">${escapeHtml(req.partyName)}</span>
+          </div>
+          <div class="request-actions">
+            <button class="btn-approve-request" data-user-id="${req.userId}" title="Approve">✓</button>
+            <button class="btn-reject-request" data-user-id="${req.userId}" title="Reject">✕</button>
+          </div>
+        </div>
+      `;
+    });
+    requestsList.innerHTML = html;
+
+    // Attach approve/reject button listeners
+    requestsList.querySelectorAll('.btn-approve-request').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const userId = e.target.dataset.userId;
+        const req = pendingRequests.find(r => r.userId === userId);
+        if (req) {
+          PartyRoom.approveJoinRequest(PartyRoom.getState().roomId, userId);
+          showToast(`Approved ${req.partyName}`);
+        }
+      });
+    });
+
+    requestsList.querySelectorAll('.btn-reject-request').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const userId = e.target.dataset.userId;
+        const req = pendingRequests.find(r => r.userId === userId);
+        if (req) {
+          PartyRoom.rejectJoinRequest(PartyRoom.getState().roomId, userId);
+          showToast(`Rejected ${req.partyName}`);
+        }
+      });
+    });
   }
 
   function _updateUIState(container) {

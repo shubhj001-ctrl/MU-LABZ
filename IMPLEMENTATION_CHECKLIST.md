@@ -148,6 +148,46 @@
 - [ ] Test join room
 - [ ] Test as DJ (play, pause, next)
 - [ ] Test as guest (add to bucket, chat)
+
+---
+
+## 🔧 Latest Session Updates (Multi-Issue Fix)
+
+### Issues Fixed
+1. **Play/Pause Button Not Working**
+   - Added Player.pause() and Player.resume() methods
+   - Created pauseHandler and resumeHandler that call Player methods
+   - DJ pause/resume now broadcasts to all clients
+   
+2. **Kicked Users Could Rejoin**
+   - Backend now calls socket.disconnect(true) when user kicked
+   - Prevents kicked users from hearing music
+   - Blocks persistent rejoin attempts
+   
+3. **No Authentication for Joins** 
+   - Implemented request-based join system
+   - Changed room:join to room:joinRequest
+   - DJ now approves/rejects join requests
+   - Users wait in lobby until approved
+   - Kicked users cannot rejoin until new session
+
+### New Socket Events (Request-Based Join System)
+- [x] room:joinRequest - User requests to join
+- [x] joinRequest:pending - User waiting confirmation
+- [x] joinRequest:approved - DJ approved request
+- [x] joinRequest:rejected - DJ rejected request
+- [x] joinRequest:list - Updated pending list for DJ
+- [x] joinRequest:new - New request notification for DJ
+
+### Files Modified in This Session
+- backend/server.js - Added request-based join handlers
+- JS/player.js - Added pause() and resume() methods  
+- JS/party.js - Added new socket methods and listeners
+- JS/Pages/party.js - Added lobby modal and pending requests UI
+- CSS/party-room.css - Added pending requests styles
+
+### Testing
+See MULTI_FEATURE_FIX_TESTS.md for comprehensive test cases
 - [ ] Test on mobile (if possible)
 - [ ] Test on tablet (browser DevTools)
 
