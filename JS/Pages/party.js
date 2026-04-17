@@ -628,6 +628,12 @@ const PartyPage = (() => {
       }, 2000);
     };
 
+    // Handler for bucket add errors
+    const bucketAddErrorHandler = (event) => {
+      console.error('[PartyPage] Bucket add error:', event.detail);
+      showToast('❌ Failed to add song - room may have closed');
+    };
+
     document.addEventListener('party:bucketAdd', updateHandler);
     document.addEventListener('party:bucketRemove', updateHandler);
     document.addEventListener('party:play', playHandler);
@@ -637,6 +643,7 @@ const PartyPage = (() => {
     document.addEventListener('party:userLeft', usersUpdateHandler);
     document.addEventListener('party:userRemoved', usersUpdateHandler);
     document.addEventListener('party:userRemovedSelf', userRemovedSelfHandler);
+    document.addEventListener('party:bucketAddError', bucketAddErrorHandler);
 
     listeners.bucketAdd = { event: 'party:bucketAdd', handler: updateHandler };
     listeners.bucketRemove = { event: 'party:bucketRemove', handler: updateHandler };
@@ -647,6 +654,7 @@ const PartyPage = (() => {
     listeners.userLeft = { event: 'party:userLeft', handler: usersUpdateHandler };
     listeners.userRemoved = { event: 'party:userRemoved', handler: usersUpdateHandler };
     listeners.userRemovedSelf = { event: 'party:userRemovedSelf', handler: userRemovedSelfHandler };
+    listeners.bucketAddError = { event: 'party:bucketAddError', handler: bucketAddErrorHandler };
   }
 
   async function _performSearch(container, query) {
@@ -662,22 +670,52 @@ const PartyPage = (() => {
         return;
       }
 
-      resultsDiv.innerHTML = tracks.map(track => `
+      // Store tracks in a map to avoid JSON stringify issues
+      const trackMap = new Map();
+      tracks.forEach((track, idx) => {
+        trackMap.set(idx, track);
+      });
+
+      resultsDiv.innerHTML = tracks.map((track, idx) => `
         <div class="search-result-item">
           <img src="${track.thumb || track.image || 'assets/placeholder.png'}" alt="${escapeHtml(track.title)}" class="result-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 50 50%22%3E%3Crect fill=%22%23333%22 width=%2250%22 height=%2250%22/%3E%3Ctext x=%2725%22 y=%2725%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2224%22%3E♪%3C/text%3E%3C/svg%3E'">
           <div class="result-info">
             <p class="result-title">${escapeHtml(track.title)}</p>
             <p class="result-artist">${escapeHtml(track.artist)}</p>
           </div>
-          <button class="btn-add result-add-btn" data-track='${JSON.stringify(track)}' title="Add to queue">+</button>
+          <button class="btn-add result-add-btn" data-track-idx="${idx}" title="Add to queue">+</button>
         </div>
       `).join('');
 
+      // Attach event listeners using map reference
       resultsDiv.querySelectorAll('.result-add-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          const track = JSON.parse(e.target.dataset.track);
+          const idx = parseInt(e.target.dataset.trackIdx);
+          const track = trackMap.get(idx);
+          
+          if (!track) {
+            console.warn('[PartyPage] Track not found in map');
+            return;
+          }
+
+          const state = PartyRoom.getState();
+          if (!state.roomId) {
+            showToast('❌ Not connected to room. Please wait...');
+            console.error('[PartyPage] No room connected when trying to add song');
+            return;
+          }
+
+          console.log('[PartyPage] Adding track to bucket:', track.title);
           PartyRoom.addToBucket(track);
-          showToast(`Added "${escapeHtml(track.title)}" to queue`);
+          showToast(`✅ Added "${escapeHtml(track.title)}" to queue`);
+          
+          // Reset search input and hide results
+          const searchInput = container.querySelector('#party-search-input');
+          if (searchInput) {
+            searchInput.value = '';
+          }
+          resultsDiv.style.display = 'none';
+          resultsDiv.innerHTML = '';
         });
       });
     } catch (err) {

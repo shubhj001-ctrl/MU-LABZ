@@ -386,7 +386,17 @@ io.on('connection', (socket) => {
   socket.on('bucket:add', (data) => {
     const { roomId, songId, title, artist, image, addedBy, source, audio, duration, genre } = data;
     const room = getRoom(roomId);
-    if (!room) return;
+    
+    if (!room) {
+      console.error(`[Bucket] ROOM NOT FOUND: ${roomId} when trying to add song "${title}"`);
+      socket.emit('error', { 
+        type: 'ROOM_NOT_FOUND', 
+        message: 'Room does not exist',
+        action: 'bucket:add',
+        roomId,
+      });
+      return;
+    }
 
     const item = {
       songId,
@@ -405,7 +415,7 @@ io.on('connection', (socket) => {
     room.bucket.push(item);
 
     io.to(roomId).emit('bucket:add', item);
-    console.log(`[Bucket] Added to ${roomId}: ${title} (source: ${source}, hasAudio: ${!!audio})`);
+    console.log(`[Bucket] ✓ Added to ${roomId}: ${title} (source: ${source}, hasAudio: ${!!audio})`);
   });
 
   // Bucket - Remove Song

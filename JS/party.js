@@ -299,7 +299,14 @@ const PartyRoom = (() => {
     // ── Error Events ═════════════════════════════════════════════
 
     socket.on('error', (err) => {
-      console.error('[PartyRoom] Socket error:', err.type, err.message);
+      console.error('[PartyRoom] Socket error:', err.type, err.message, err);
+      
+      // Handle specific errors
+      if (err.type === 'ROOM_NOT_FOUND' && err.action === 'bucket:add') {
+        console.error('[PartyRoom] Room was not found when adding song. Room might have closed.');
+        document.dispatchEvent(new CustomEvent('party:bucketAddError', { detail: err }));
+      }
+      
       document.dispatchEvent(new CustomEvent('party:error', { detail: err }));
     });
 
@@ -485,7 +492,28 @@ const PartyRoom = (() => {
     // ── Bucket Management (Everyone) ─────────────────────────────
 
     addToBucket: (track) => {
-      if (!socket || !isConnected) return;
+      if (!socket) {
+        console.error('[PartyRoom] Socket not initialized');
+        return;
+      }
+
+      if (!isConnected) {
+        console.error('[PartyRoom] Not connected to socket. Current state:', { isConnected, socketReady: socket?.connected });
+        return;
+      }
+
+      if (!PartyState.roomId) {
+        console.error('[PartyRoom] Not in a room yet. Current state:', PartyState.roomId);
+        return;
+      }
+
+      console.log('[PartyRoom] Adding to bucket:', {
+        track: track.title,
+        roomId: PartyState.roomId,
+        socketConnected: socket.connected,
+        socketId: socket.id,
+      });
+
       socket.emit('bucket:add', {
         roomId: PartyState.roomId,
         songId: track.id,
