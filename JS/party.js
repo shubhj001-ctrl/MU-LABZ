@@ -242,7 +242,7 @@ const PartyRoom = (() => {
     // Full pending list update from server (e.g. on reconnect)
     socket.on('joinRequest:list', (data) => {
       console.log('[PartyRoom] Pending requests updated:', data);
-      PartyState.pendingJoins = data.requests || [];
+      PartyState.pendingJoins = data.pendingRequests || [];
       document.dispatchEvent(new CustomEvent('party:joinRequest:list', { detail: data }));
     });
 
@@ -250,19 +250,24 @@ const PartyRoom = (() => {
     socket.on('joinRequest:new', (data) => {
       console.log('[PartyRoom] New join request from:', data.partyName);
 
-      // Add to PartyState regardless
-      if (!PartyState.pendingJoins.find(r => r.userId === data.userId)) {
-        PartyState.pendingJoins.push({
-          userId: data.userId,
-          partyName: data.partyName,
-          requestedAt: new Date().toISOString(),
-        });
+      // Update with full pending requests list from server
+      if (data.pendingRequests && Array.isArray(data.pendingRequests)) {
+        PartyState.pendingJoins = data.pendingRequests;
+      } else {
+        // Fallback: manually add if server didn't send list
+        if (!PartyState.pendingJoins.find(r => r.userId === data.requestId)) {
+          PartyState.pendingJoins.push({
+            userId: data.requestId,
+            partyName: data.partyName,
+            requestedAt: new Date().toISOString(),
+          });
+        }
       }
 
       if (!_uiReady) {
         // DJ's lobby listener may not be attached yet — queue for later
         console.log('[PartyRoom] UI not ready yet, queuing join request from:', data.partyName);
-        if (!_pendingRequestQueue.find(r => r.userId === data.userId)) {
+        if (!_pendingRequestQueue.find(r => r.userId === data.requestId)) {
           _pendingRequestQueue.push(data);
         }
         return;
