@@ -977,6 +977,27 @@
   padding: 1rem;
 }
 
+/* FIX: Tab content visibility — hidden by default, shown when active */
+.modal-tab-content {
+  display: none;
+}
+
+.modal-tab-content.active {
+  display: block;
+}
+
+/*
+ * IMPORTANT FOR LOBBY: If your pending requests section uses .modal-tab-content
+ * and tabs are switched via JS, make sure the first tab panel has .active added
+ * on render, e.g.: document.querySelector('.modal-tab-content').classList.add('active')
+ * 
+ * If pending requests should ALWAYS be visible (not behind a tab), 
+ * use a wrapper div WITHOUT .modal-tab-content — use .pending-requests-section instead.
+ */
+.pending-requests-section {
+  display: block; /* Always visible — use this if not behind a tab */
+}
+
 .modal-user-item {
   display: flex;
   justify-content: space-between;
@@ -1505,15 +1526,7 @@
   gap: 0.25rem;
 }
 
-.modal-tab-content {
-  display: none;
-}
-
-.modal-tab-content.active {
-  display: block;
-}
-
-/* ─── Mobile Responsive ─── */
+/* ─── Responsive: 1200px ─── */
 @media (max-width: 1200px) {
   .party-content {
     grid-template-columns: 1fr;
@@ -1535,6 +1548,7 @@
   }
 }
 
+/* ─── Responsive: 768px ─── */
 @media (max-width: 768px) {
   .party-room-container {
     display: flex;
@@ -1685,8 +1699,8 @@
   }
 }
 
+/* ─── Responsive: 480px ─── */
 @media (max-width: 480px) {
-  /* ─── Header Optimization ─── */
   .party-room-container {
     display: flex;
     flex-direction: column;
@@ -1699,7 +1713,6 @@
     gap: 0.75rem;
     grid-template-columns: 1fr;
     flex-shrink: 0;
-    max-height: auto;
   }
 
   .party-header-info {
@@ -1731,7 +1744,7 @@
   }
 
   .party-header-url {
-    display: none; /* Hide URL box on mobile */
+    display: none;
   }
 
   .leave-btn {
@@ -1746,7 +1759,6 @@
     cursor: pointer;
   }
 
-  /* ─── Content Area ─── */
   .party-content {
     display: flex;
     flex-direction: column;
@@ -1757,7 +1769,6 @@
     grid-template-columns: none;
   }
 
-  /* ─── Player Section (Priority) ─── */
   .party-center {
     order: 1;
     max-height: 35%;
@@ -1822,6 +1833,7 @@
     display: flex;
     gap: 0.5rem;
     justify-content: center;
+    margin: 0.5rem 0;
   }
 
   .btn-dj-control {
@@ -1863,7 +1875,6 @@
     color: var(--text-secondary, #aaa);
   }
 
-  /* ─── Search Section ─── */
   .party-left-sidebar {
     order: 2;
     max-height: 32%;
@@ -1947,7 +1958,11 @@
     font-size: 0.85rem;
   }
 
-  /* ─── Queue & Users Section ─── */
+  .result-add-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.9rem;
+  }
+
   .party-right-sidebar {
     order: 3;
     flex: 1;
@@ -2019,6 +2034,11 @@
     flex-shrink: 0;
   }
 
+  .btn-remove-user {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
   .empty-msg {
     font-size: 0.85rem;
     padding: 1rem 0.5rem;
@@ -2041,7 +2061,7 @@
     font-size: 1rem;
   }
 
-  /* ─── Scrollbar Hidden on Mobile ─── */
+  /* ─── Scrollbar ─── */
   ::-webkit-scrollbar {
     width: 4px;
   }
@@ -2113,24 +2133,3 @@
     font-size: 1rem;
   }
 }
-
-  .result-add-btn {
-    padding: 0.4rem 0.6rem;
-    font-size: 0.9rem;
-  }
-
-  .btn-remove-user {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.8rem;
-  }
-
-  .dj-controls {
-    margin: 1rem 0;
-    gap: 0.5rem;
-  }
-
-  .btn-dj-control {
-    padding: 0.5rem 1rem;
-    font-size: 0.95rem;
-  }
-
