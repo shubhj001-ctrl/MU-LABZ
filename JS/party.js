@@ -199,6 +199,13 @@ const PartyRoom = (() => {
       PartyState.currentSong = data.currentSong;
       PartyState.isPlaying = data.isPlaying;
       PartyState.currentTime = data.currentTime;
+      // ✅ FIX: Also set pending requests and room creator
+      PartyState.pendingJoins = data.pendingRequests || [];
+      PartyState.roomCreatorId = data.creatorId;
+      
+      _savePartySession(PartyState);
+      _uiReady = true;
+      
       document.dispatchEvent(new CustomEvent('party:roomJoined', { detail: PartyState }));
     });
 
@@ -317,6 +324,11 @@ const PartyRoom = (() => {
       if (user) {
         PartyState.users = PartyState.users.filter(u => u.userId !== data.userId);
         PartyState.djs.push({ userId: data.userId, partyName: data.partyName });
+        // ✅ CRITICAL FIX: Update role if this is the promoted user
+        if (data.userId === PartyState.userId) {
+          console.log('[PartyRoom] ✓ Current user promoted to DJ - updating role');
+          PartyState.role = 'dj';
+        }
         document.dispatchEvent(new CustomEvent('party:userPromoted', { detail: data }));
       }
     });

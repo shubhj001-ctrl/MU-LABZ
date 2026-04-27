@@ -1238,7 +1238,7 @@ const PartyPage = (() => {
         </div>
       `).join('');
 
-      // Play now button (DJ only)
+      // Play now button (DJ only) - ✅ FIX: Play directly without adding to queue
       resultsDiv.querySelectorAll('.btn-play-now').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const idx = parseInt(e.target.dataset.trackIdx);
@@ -1251,13 +1251,19 @@ const PartyPage = (() => {
             return;
           }
 
-          console.log('[PartyPage] Playing now:', track.title);
-          PartyRoom.addToBucket(track);
-          
-          setTimeout(() => {
-            PartyRoom.playFromQueue(track.songId);
-            showToast(`▶ Now playing: ${escapeHtml(track.title)}`);
-          }, 100);
+          console.log('[PartyPage] Playing directly (not adding to queue):', track.title);
+          // ✅ Send playback:play directly to server, bypassing queue
+          PartyRoom.playTrack({
+            id: track.id || track.songId,
+            title: track.title,
+            artist: track.artist,
+            image: track.image || track.thumb,
+            source: track.source || 'jiosaavn',
+            audio: track.audio,
+            duration: track.duration,
+            genre: track.genre,
+          });
+          showToast(`▶ Now playing: ${escapeHtml(track.title)}`);
           
           container.querySelector('#party-search-input').value = '';
           resultsDiv.style.display = 'none';

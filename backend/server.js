@@ -188,6 +188,87 @@ io.on('connection', (socket) => {
     console.log(`[Socket] ${partyName} created room ${room.id} (${roomType})`);
   });
 
+  // ✅ FIX: Handle direct room join (for DJ rejoining or direct share link)
+  socket.on('room:join', (data) => {
+    const userId = socket.id;
+    const { roomId, password, partyName } = data;
+    const room = getRoom(roomId);
+
+    if (!room) {
+      socket.emit('error', { type: 'ROOM_NOT_FOUND', message: 'Room not found' });
+      return;
+    }
+
+    // Check password if required
+    if (room.password && room.password !== password) {
+      socket.emit('error', { type: 'INVALID_PASSWORD', message: 'Invalid room password' });
+      return;
+    }
+
+    // Check if user is already in room (DJ)
+    const isDJ = room.djs.find(d => d.userId === userId);
+    if (isDJ) {
+      // DJ rejoining - send them full room state including pending requests
+      socket.join(room.id);
+      socketToUser.set(socket.id, { userId, roomId });
+      userSockets.set(userId, socket.id);
+
+      // Update DJ's socket ID
+      const dj = room.djs.find(d => d.userId === userId);
+      if (dj) dj.socketId = socket.id;
+
+      socket.emit('room:joined', {
+        roomId: room.id,
+        roomName: room.name,
+        roomType: room.type,
+        creatorId: room.creatorId,
+        userId,
+        role: 'dj',
+        djs: room.djs,
+        users: room.users,
+        bucket: room.bucket,
+        currentSong: room.currentSong,
+        isPlaying: room.isPlaying,
+        currentTime: room.currentTime,
+        // ✅ FIX: Send pending requests to DJ
+        pendingRequests: room.pendingJoins.map(req => ({
+          userId: req.userId,
+          partyName: req.partyName,
+          requestTime: req.requestTime,
+        })),
+      });
+
+      console.log(`[Socket] DJ ${partyName} rejoined room ${roomId}`);
+    } else {
+      // Guest trying to join directly (not via request) - should use joinRequest flow
+      // But if direct join attempted, treat as join request
+      if (room.users.find(u => u.userId === userId)) {
+        // Already a guest in room
+        socket.join(room.id);
+        socketToUser.set(socket.id, { userId, roomId });
+        userSockets.set(userId, socket.id);
+
+        socket.emit('room:joined', {
+          roomId: room.id,
+          roomName: room.name,
+          roomType: room.type,
+          creatorId: room.creatorId,
+          userId,
+          role: 'guest',
+          djs: room.djs,
+          users: room.users,
+          bucket: room.bucket,
+          currentSong: room.currentSong,
+          isPlaying: room.isPlaying,
+          currentTime: room.currentTime,
+        });
+      } else {
+        // New user - send to join request flow
+        socket.emit('error', { type: 'NOT_IN_ROOM', message: 'Please request to join' });
+      }
+    }
+  });
+
   socket.on('room:joinRequest', (data) => {
     const userId = socket.id;
     const { roomId, password, partyName } = data;
@@ -667,8 +748,9 @@ io.on('connection', (socket) => {
       // DJ left - close room
       deleteRoom(roomId);
     } else {
-      // Guest left - remove from users
+      // Guest left - remove from both users AND djs
       room.users = room.users.filter(u => u.userId !== userInfo.userId);
+      room.djs = room.djs.filter(d => d.userId !== userInfo.userId);
       io.to(roomId).emit('user:left', {
         userId: userInfo.userId,
       });
@@ -692,7 +774,9 @@ io.on('connection', (socket) => {
         if (isDJ) {
           deleteRoom(userInfo.roomId);
         } else {
+          // ✅ FIX: Remove from both users AND djs (in case they were promoted)
           room.users = room.users.filter(u => u.userId !== userInfo.userId);
+          room.djs = room.djs.filter(d => d.userId !== userInfo.userId);
           io.to(userInfo.roomId).emit('user:left', {
             userId: userInfo.userId,
           });
