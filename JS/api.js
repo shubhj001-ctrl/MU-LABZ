@@ -10,7 +10,13 @@
  */
 
 const API = (() => {
-  const SAAVN  = 'https://jiosaavn-api-privatecvc2.vercel.app';
+  const BACKEND = (typeof window !== 'undefined' && window.BACKEND_URL)
+    ? window.BACKEND_URL
+    : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+      ? 'http://localhost:3001'
+      : 'https://mulabz.onrender.com';
+
+  const SAAVN  = `${BACKEND}/proxy/jiosaavn`;
   const ITUNES = 'https://itunes.apple.com';
 
   // Quality preference — try 320kbps first, fall back down

@@ -61,6 +61,44 @@ const io = socketIO(server, {
 
 app.use(express.json());
 
+const JIOSAAVN_PROXY_HOST = 'https://jiosaavn-api-privatecvc2.vercel.app';
+
+// Proxy endpoint for JioSaavn API to avoid browser CORS blocks
+app.all('/proxy/jiosaavn/*', async (req, res) => {
+  try {
+    const targetPath = req.params[0] || '';
+    const targetUrl = new URL(`${JIOSAAVN_PROXY_HOST}/${targetPath}`);
+    targetUrl.search = new URLSearchParams(req.query).toString();
+
+    const forwardedHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      const lower = key.toLowerCase();
+      if (['host', 'origin', 'referer', 'content-length'].includes(lower)) continue;
+      if (value) forwardedHeaders[key] = value;
+    }
+    forwardedHeaders.Accept = forwardedHeaders.Accept || 'application/json';
+
+    const fetchOptions = {
+      method: req.method,
+      headers: forwardedHeaders,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {}),
+    };
+
+    const backendRes = await fetch(targetUrl.href, fetchOptions);
+    res.status(backendRes.status);
+    backendRes.headers.forEach((value, name) => {
+      if (name.toLowerCase() === 'content-encoding') return;
+      res.setHeader(name, value);
+    });
+
+    const responseBuffer = Buffer.from(await backendRes.arrayBuffer());
+    res.send(responseBuffer);
+  } catch (error) {
+    console.error('[Proxy] JioSaavn proxy error:', error);
+    res.status(502).json({ error: 'Failed to proxy JioSaavn request' });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
