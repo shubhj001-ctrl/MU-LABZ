@@ -61,41 +61,73 @@ const io = socketIO(server, {
 
 app.use(express.json());
 
-const JIOSAAVN_PROXY_HOST = 'https://jiosaavn-api-privatecvc2.vercel.app';
+const JIOSAAVN_PROXY_HOSTS = [
+  'https://saavnapi.tech',
+  'https://jiosaavn-api-privatecvc2.vercel.app', // fallback
+];
+
+function _jiosaavnProxyFallback(targetPath) {
+  const path = targetPath.toLowerCase();
+  if (path.startsWith('search/songs')) return { data: { results: [] } };
+  if (path.startsWith('search/albums')) return { data: { results: [] } };
+  if (path.startsWith('albums')) return { data: { songs: [] } };
+  if (path.includes('/songs')) return { data: { songs: [] } };
+  if (path.includes('/albums')) return { data: { albums: [] } };
+  return { data: {} };
+}
 
 // Proxy endpoint for JioSaavn API to avoid browser CORS blocks
 app.all('/proxy/jiosaavn/*', async (req, res) => {
-  try {
-    const targetPath = req.params[0] || '';
-    const targetUrl = new URL(`${JIOSAAVN_PROXY_HOST}/${targetPath}`);
-    targetUrl.search = new URLSearchParams(req.query).toString();
+  const targetPath = req.params[0] || '';
+  
+  for (let i = 0; i < JIOSAAVN_PROXY_HOSTS.length; i++) {
+    try {
+      const host = JIOSAAVN_PROXY_HOSTS[i];
+      const targetUrl = new URL(`${host}/${targetPath}`);
+      targetUrl.search = new URLSearchParams(req.query).toString();
 
-    const forwardedHeaders = {};
-    for (const [key, value] of Object.entries(req.headers)) {
-      const lower = key.toLowerCase();
-      if (['host', 'origin', 'referer', 'content-length'].includes(lower)) continue;
-      if (value) forwardedHeaders[key] = value;
+      const forwardedHeaders = {};
+      for (const [key, value] of Object.entries(req.headers)) {
+        const lower = key.toLowerCase();
+        if (['host', 'origin', 'referer', 'content-length'].includes(lower)) continue;
+        if (value) forwardedHeaders[key] = value;
+      }
+      forwardedHeaders.Accept = forwardedHeaders.Accept || 'application/json';
+      forwardedHeaders['User-Agent'] = forwardedHeaders['User-Agent'] || 'MU-LABZ/1.0';
+
+      const fetchOptions = {
+        method: req.method,
+        headers: forwardedHeaders,
+        body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {}),
+      };
+
+      const backendRes = await fetch(targetUrl.href, fetchOptions);
+      
+      // If 402 or 503, try next host
+      if (backendRes.status === 402 || backendRes.status === 503) {
+        console.warn(`[Proxy] ${host} returned ${backendRes.status}, trying next host...`);
+        continue;
+      }
+
+      res.status(backendRes.status);
+      backendRes.headers.forEach((value, name) => {
+        if (name.toLowerCase() === 'content-encoding') return;
+        res.setHeader(name, value);
+      });
+
+      const responseBuffer = Buffer.from(await backendRes.arrayBuffer());
+      res.set('X-Proxy-Host', host);
+      res.send(responseBuffer);
+      return;
+    } catch (error) {
+      console.warn(`[Proxy] Error with ${JIOSAAVN_PROXY_HOSTS[i]}:`, error.message);
+      if (i === JIOSAAVN_PROXY_HOSTS.length - 1) {
+        // Last host, return fallback
+        const fallback = _jiosaavnProxyFallback(targetPath);
+        res.status(200).set('Content-Type', 'application/json').set('X-Proxy-Status', 'all-hosts-failed').send(JSON.stringify(fallback));
+        return;
+      }
     }
-    forwardedHeaders.Accept = forwardedHeaders.Accept || 'application/json';
-
-    const fetchOptions = {
-      method: req.method,
-      headers: forwardedHeaders,
-      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {}),
-    };
-
-    const backendRes = await fetch(targetUrl.href, fetchOptions);
-    res.status(backendRes.status);
-    backendRes.headers.forEach((value, name) => {
-      if (name.toLowerCase() === 'content-encoding') return;
-      res.setHeader(name, value);
-    });
-
-    const responseBuffer = Buffer.from(await backendRes.arrayBuffer());
-    res.send(responseBuffer);
-  } catch (error) {
-    console.error('[Proxy] JioSaavn proxy error:', error);
-    res.status(502).json({ error: 'Failed to proxy JioSaavn request' });
   }
 });
 
